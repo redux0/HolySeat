@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useThemeVariables, useThemeTransition } from '../hooks/useTheme';
 import { Card } from './ui/card';
-import { Play, BookOpen, Zap, List, Plus, Calendar, TrendingUp, Timer, Bell } from 'lucide-react';
+import { Plus, Calendar, TrendingUp, Timer, Bell } from 'lucide-react';
 import { useCTDPActions } from '../features/ctdp/hooks';
 import { useAtomValue } from 'jotai';
 import { contextsWithChainsAtom, contextsLoadingAtom, contextsErrorAtom } from '../features/ctdp/atoms';
 import CreateContextPage from './CreateContextPage';
 import ContextManagementPage from './ContextManagementPage';
+import { getIconComponent, IconNames, ICON_MAP } from '../constants';
 
 const StartPage: React.FC = () => {
   const themeVars = useThemeVariables();
@@ -27,21 +28,6 @@ const StartPage: React.FC = () => {
     console.log('🎯 初始化StartPage数据加载');
     initializeData();
   }, []);
-
-  // 图标映射
-  const getContextIcon = (iconName?: string) => {
-    const iconMap: { [key: string]: React.ComponentType<any> } = {
-      '🧠': Play,
-      '📚': BookOpen, 
-      '💪': Zap,
-      '🧘': List,
-      'play': Play,
-      'book': BookOpen,
-      'zap': Zap,
-      'list': List
-    };
-    return iconMap[iconName || 'play'] || Play;
-  };
 
   // 处理启动会话
   const handleStartSession = async (contextId: string, contextName: string) => {
@@ -214,7 +200,7 @@ const StartPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <div className="flex flex-wrap gap-6 pb-8 justify-start">
           {contexts?.map((context) => {
-            const IconComponent = getContextIcon(context.icon);
+            const IconComponent = getIconComponent(context.icon);
             const activeChain = context.activeChain;
             const chainLength = activeChain?.counter || 0;
             const successRate = calculateSuccessRate(context);
@@ -362,7 +348,7 @@ const StartPage: React.FC = () => {
                         color: 'white'
                       }}
                     >
-                      <Play size={16} />
+                      {React.createElement(ICON_MAP[IconNames.PLAY], { size: 16 })}
                       立即开始
                     </button>
                   </div>

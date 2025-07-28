@@ -5,37 +5,22 @@ import { useCTDPActions } from '../features/ctdp/hooks';
 import { contextsWithChainsAtom } from '../features/ctdp/atoms';
 import { toast } from './ui/toast';
 import { 
-  BrainCircuit, 
-  BookOpen, 
-  Zap, 
-  Wind, 
-  Sparkles, 
-  Wand2,
   ArrowLeft,
   Timer,
   ShieldCheck,
   Bell,
   Play
 } from 'lucide-react';
-
-// 图标选项
-const iconOptions = [
-  { name: 'BrainCircuit', component: BrainCircuit },
-  { name: 'BookOpen', component: BookOpen },
-  { name: 'Zap', component: Zap },
-  { name: 'Wind', component: Wind },
-  { name: 'Sparkles', component: Sparkles },
-  { name: 'Wand2', component: Wand2 },
-];
-
-// 颜色选项
-const colorOptions = [
-  { name: 'indigo', hex: '#6366F1' },
-  { name: 'sky', hex: '#38BDF8' },
-  { name: 'amber', hex: '#F59E0B' },
-  { name: 'emerald', hex: '#10B981' },
-  { name: 'rose', hex: '#F43F5E' },
-];
+import { 
+  AVAILABLE_ICONS, 
+  AVAILABLE_COLORS, 
+  getIconComponent, 
+  getColorHex,
+  IconNames,
+  ColorNames,
+  PRESET_TIMES,
+  APP_CONFIG
+} from '../constants';
 
 interface CreateContextPageProps {
   onBack: () => void;
@@ -51,8 +36,8 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
   // 表单状态
   const [contextName, setContextName] = useState('');
   const [contextDescription, setContextDescription] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState(iconOptions[0].name);
-  const [selectedColor, setSelectedColor] = useState(colorOptions[0].name);
+  const [selectedIcon, setSelectedIcon] = useState(AVAILABLE_ICONS[0].name);
+  const [selectedColor, setSelectedColor] = useState(AVAILABLE_COLORS[0].name);
   const [defaultDuration, setDefaultDuration] = useState(45);
   const [rules, setRules] = useState('');
   const [triggerAction, setTriggerAction] = useState('');
@@ -68,11 +53,11 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
       if (existingContext) {
         setContextName(existingContext.name || '');
         setContextDescription(existingContext.description || '');
-        setSelectedIcon(existingContext.icon || iconOptions[0].name);
+        setSelectedIcon(existingContext.icon || AVAILABLE_ICONS[0].name);
         
         // 根据颜色hex值查找对应的颜色名称
-        const colorOption = colorOptions.find(option => option.hex === existingContext.color);
-        setSelectedColor(colorOption?.name || colorOptions[0].name);
+        const colorOption = AVAILABLE_COLORS.find(option => option.hex === existingContext.color);
+        setSelectedColor(colorOption?.name || AVAILABLE_COLORS[0].name);
         
         // 从规则JSON中解析数据
         if (existingContext.rules) {
@@ -137,7 +122,7 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
         name: contextName.trim(),
         description: contextDescription.trim() || undefined,
         icon: selectedIcon,
-        color: colorOptions.find(c => c.name === selectedColor)?.hex || '#6366F1',
+        color: getColorHex(selectedColor),
         rules: {
           items: rules.split('\n').filter(rule => rule.trim()),
           defaultDuration: defaultDuration,
@@ -171,10 +156,10 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
     }
   };
 
-  const IconComponent = iconOptions.find(i => i.name === selectedIcon)?.component || BrainCircuit;
-  const colorHex = colorOptions.find(c => c.name === selectedColor)?.hex || '#6366F1';
+  const IconComponent = getIconComponent(selectedIcon);
+  const colorHex = getColorHex(selectedColor);
 
-  const presetTimes = ['5分钟', '10分钟', '15分钟', '30分钟'];
+  const presetTimes = PRESET_TIMES.map(time => time.label);
 
   return (
     <div 
@@ -282,7 +267,7 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
                       选择图标
                     </label>
                     <div className="flex space-x-2 mt-2">
-                      {iconOptions.map(icon => (
+                      {AVAILABLE_ICONS.map(icon => (
                         <button 
                           key={icon.name} 
                           onClick={() => setSelectedIcon(icon.name)} 
@@ -295,6 +280,7 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
                               ? '#818CF8' 
                               : 'transparent'
                           }}
+                          title={icon.label}
                         >
                           <icon.component size={24} color="white" />
                         </button>
@@ -309,7 +295,7 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
                       选择颜色
                     </label>
                     <div className="flex space-x-2 mt-2">
-                      {colorOptions.map(color => (
+                      {AVAILABLE_COLORS.map(color => (
                         <button 
                           key={color.name} 
                           onClick={() => setSelectedColor(color.name)} 

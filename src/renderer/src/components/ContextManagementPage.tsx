@@ -1,30 +1,17 @@
 import React, { useState } from 'react';
 import { useAtomValue } from 'jotai';
 import { useThemeVariables } from '../hooks/useTheme';
-import { ArrowLeft, Settings, Delete, BrainCircuit, BookOpen, Zap, Wind, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowLeft, Settings, Delete } from 'lucide-react';
 import CreateContextPage from './CreateContextPage';
 import { contextsWithChainsAtom } from '../features/ctdp/atoms';
 import { useCTDPActions } from '../features/ctdp/hooks';
+import { getIconComponent } from '../constants';
 
 interface ContextManagementPageProps {
   contextId: string;
   contextName: string;
   onBack: () => void;
 }
-
-// 图标映射函数
-const getContextIcon = (iconName?: string) => {
-  const iconMap: { [key: string]: React.ComponentType<any> } = {
-    'BrainCircuit': BrainCircuit,
-    'BookOpen': BookOpen,
-    'Zap': Zap,
-    'Wind': Wind,
-    'Sparkles': Sparkles,
-    'Wand2': Wand2,
-  };
-  
-  return iconMap[iconName || 'BrainCircuit'] || BrainCircuit;
-};
 
 // Mock链历史数据
 const mockChainHistory = [
@@ -142,7 +129,7 @@ const ContextManagementPage: React.FC<ContextManagementPageProps> = ({
   const rulesData = getRulesData();
   
   // 获取情境图标组件
-  const IconComponent = getContextIcon(currentContext?.icon);
+  const IconComponent = getIconComponent(currentContext?.icon);
   
   // 处理删除情境
   const handleDeleteContext = async () => {
@@ -253,7 +240,7 @@ const ContextManagementPage: React.FC<ContextManagementPageProps> = ({
                 </label>
                 <div className="mt-2 space-y-1 text-sm">
                   {rulesData.items.length > 0 ? (
-                    rulesData.items.map((rule, index) => (
+                    rulesData.items.map((rule: string, index: number) => (
                       <div key={index} style={{ color: themeVars.textPrimary }}>
                         {index + 1}. {rule}
                       </div>
