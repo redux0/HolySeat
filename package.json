@@ -1,0 +1,41 @@
+{
+  "name": "holyseat",
+  "version": "1.0.0",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/redux0/HolySeat.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/redux0/HolySeat/issues"
+  },
+  "homepage": "https://github.com/redux0/HolySeat#readme",
+  "description": "",
+  "dependencies": {
+    "@electron-toolkit/utils": "^4.0.0",
+    "jotai": "^2.12.5",
+    "lucide-react": "^0.526.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.4.21",
+    "electron": "^37.2.4",
+    "electron-vite": "^4.0.0",
+    "postcss": "^8.5.6",
+    "prisma": "^6.12.0",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.8.3"
+  }
+}
