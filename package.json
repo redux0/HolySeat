@@ -5,7 +5,13 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "preview": "electron-vite preview"
+    "preview": "electron-vite preview",
+    "db:init": "node prisma/init.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts"
   },
   "repository": {
     "type": "git",
@@ -21,6 +27,7 @@
   "description": "",
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
+    "@prisma/client": "^6.12.0",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.7",
@@ -45,6 +52,7 @@
     "postcss": "^8.5.6",
     "prisma": "^6.12.0",
     "tailwindcss": "^4.1.11",
+    "tsx": "^4.20.3",
     "tw-animate-css": "^1.3.6",
     "typescript": "^5.8.3"
   }

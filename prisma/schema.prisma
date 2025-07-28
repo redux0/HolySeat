@@ -1,0 +1,187 @@
+// Prisma schema for HolySeat CTDP Chain Management Module
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// 神圣情境（Sacred Context）- 对应理论文档中的"神圣座位"概念
+// 代表一类需要专注的活动场景，是CTDP链的拥有者和管理者
+model SacredContext {
+  id          String    @id @default(uuid())
+  name        String    // 情境名称，如"深度工作"、"学习"、"健身"等
+  description String?   // 情境描述
+  icon        String?   // 图标标识
+  color       String?   // 主题颜色
+  
+  // 配置信息 - 用于"神圣座位原理"的规则定义
+  rules       Json?     // 存储该情境下的专注规则和要求
+  environment Json?     // 环境设置，如应用白名单、切换脚本等
+  
+  // 关联关系
+  chains      CTDPChain[]     // 该情境下的所有主链
+  auxChains   AuxiliaryChain[] // 该情境下的所有辅助链（预约）
+  
+  // 元数据
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@map("sacred_contexts")
+}
+
+// 主链（Main Chain）- 核心的CTDP任务链，体现"神圣座位原理"
+// 记录在特定神圣情境下的连续成功专注记录
+model CTDPChain {
+  id        String      @id @default(uuid())
+  counter   Int         @default(0)     // 当前链长度 #N，对应理论中的任务编号
+  status    ChainStatus @default(ACTIVE) // 链状态
+  
+  // 关联到神圣情境
+  contextId String
+  context   SacredContext @relation(fields: [contextId], references: [id], onDelete: Cascade)
+  
+  // 关联的任务日志
+  logs      CTDPLog[]
+  
+  // 统计信息
+  totalDuration    Int      @default(0)  // 总专注时长（秒）
+  longestSession   Int      @default(0)  // 最长单次专注时长（秒）
+  averageDuration  Int      @default(0)  // 平均专注时长（秒）
+  
+  // 元数据
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  brokenAt  DateTime? // 链断裂时间
+  
+  @@map("ctdp_chains")
+}
+
+// 链状态枚举
+enum ChainStatus {
+  ACTIVE   // 活跃状态 - 一个Context下只应有一条ACTIVE链
+  BROKEN   // 已断裂 - 违反了"神圣座位"规则
+  ARCHIVED // 已归档 - 手动归档的历史链
+  
+  @@map("chain_status")
+}
+
+// 任务日志 - 记录CTDP链的详细执行历史，支持"下必为例"原理
+model CTDPLog {
+  id       String  @id @default(uuid())
+  type     LogType // 日志类型
+  
+  // 任务详情
+  title    String? // 具体任务标题，如"完成第三章初稿"
+  message  String? // 详细信息或失败原因
+  duration Int?    // 专注持续时长（秒）
+  
+  // 扩展数据
+  metadata Json?   // 存储额外数据，如规则变更详情、环境参数等
+  
+  // 关联关系
+  chainId  String
+  chain    CTDPChain @relation(fields: [chainId], references: [id], onDelete: Cascade)
+  tags     Tag[]     @relation("CTDPLogTags") // 任务标签，便于分类和筛选
+  
+  // 元数据
+  createdAt DateTime @default(now())
+  
+  @@map("ctdp_logs")
+}
+
+// 日志类型枚举
+enum LogType {
+  SUCCESS      // 成功完成任务 - 链长度+1
+  BROKEN       // 链断裂 - 违反规则，链状态变为BROKEN
+  RULE_UPDATED // 规则更新 - "下必为例"原理触发的规则调整
+  CREATED      // 链创建 - 新链开始
+  PAUSED       // 任务暂停
+  RESUMED      // 任务恢复
+  
+  @@map("log_types")
+}
+
+// 标签系统 - 用于任务分类和数据分析
+model Tag {
+  id    String @id @default(uuid())
+  name  String @unique // 标签名称，如"编程"、"阅读"、"写作"
+  color String?        // 标签颜色
+  
+  // 关联关系
+  logs  CTDPLog[] @relation("CTDPLogTags")
+  
+  // 元数据
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("tags")
+}
+
+// 辅助链（Auxiliary Chain）- 实现"线性时延原理"的预约机制
+// 用于降低主任务启动阻力，对应理论中的"预约15分钟后开始"
+model AuxiliaryChain {
+  id              String         @id @default(uuid())
+  
+  // 预约目标
+  targetContextId String         // 预约启动的神圣情境ID
+  targetContext   SacredContext  @relation(fields: [targetContextId], references: [id], onDelete: Cascade)
+  
+  // 时间设定
+  triggerTime     DateTime       @default(now()) // 预约触发时间
+  delayMinutes    Int            @default(15)    // 延迟分钟数，默认15分钟
+  deadline        DateTime       // 必须开始主任务的截止时间
+  
+  // 预约状态
+  status          AuxChainStatus @default(PENDING)
+  
+  // 额外信息
+  description     String?        // 预约描述
+  reminder        Boolean        @default(true)   // 是否启用提醒
+  
+  // 元数据
+  createdAt       DateTime       @default(now())
+  fulfilledAt     DateTime?      // 履行时间
+  failedAt        DateTime?      // 失败时间
+  
+  @@map("auxiliary_chains")
+}
+
+// 辅助链状态枚举
+enum AuxChainStatus {
+  PENDING    // 待处理 - 预约已创建，等待执行
+  FULFILLED  // 已履行 - 在截止时间内成功启动了主任务
+  FAILED     // 已失败 - 超过截止时间未启动主任务
+  CANCELLED  // 已取消 - 用户主动取消预约
+  
+  @@map("aux_chain_status")
+}
+
+// 全局设置 - 存储CTDP系统的配置参数
+model CTDPSettings {
+  id    String @id @default("default")
+  
+  // 系统配置
+  defaultSessionDuration Int     @default(3600)    // 默认专注时长（秒）
+  defaultBreakDuration   Int     @default(300)     // 默认休息时长（秒）
+  enableNotifications    Boolean @default(true)    // 是否启用通知
+  enableSounds           Boolean @default(true)    // 是否启用声音
+  
+  // "下必为例"原理的配置
+  strictRuleMode         Boolean @default(false)   // 严格规则模式
+  allowRuleUpdates       Boolean @default(true)    // 是否允许规则更新
+  
+  // 其他设置
+  theme                  String  @default("auto")  // 主题设置
+  language               String  @default("zh-CN") // 语言设置
+  
+  // 元数据
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("ctdp_settings")
+}
