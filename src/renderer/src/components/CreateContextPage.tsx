@@ -35,9 +35,11 @@ const colorOptions = [
 
 interface CreateContextPageProps {
   onBack: () => void;
+  isEditing?: boolean;
+  contextId?: string;
 }
 
-const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack }) => {
+const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing = false, contextId }) => {
   const themeVars = useThemeVariables();
   
   // 表单状态
@@ -48,6 +50,21 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack }) => {
   const [rules, setRules] = useState('');
   const [triggerAction, setTriggerAction] = useState('');
   const [selectedPresetTime, setSelectedPresetTime] = useState('15分钟');
+
+  // 如果是编辑模式，加载现有配置
+  React.useEffect(() => {
+    if (isEditing && contextId) {
+      // TODO: 从数据库加载现有配置
+      // 这里使用Mock数据模拟
+      setContextName('深度工作');
+      setSelectedIcon('BrainCircuit');
+      setSelectedColor('indigo');
+      setDefaultDuration(45);
+      setRules('1. 关闭所有社交软件。\n2. 手机静音并反面放置。\n3. 只允许使用VS Code和相关开发工具。');
+      setTriggerAction('打一个响指');
+      setSelectedPresetTime('15分钟');
+    }
+  }, [isEditing, contextId]);
 
   const IconComponent = iconOptions.find(i => i.name === selectedIcon)?.component || BrainCircuit;
   const colorHex = colorOptions.find(c => c.name === selectedColor)?.hex || '#6366F1';
@@ -77,13 +94,13 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack }) => {
             className="text-3xl font-bold"
             style={{ color: themeVars.textPrimary }}
           >
-            创建新情境
+            {isEditing ? '编辑情境' : '创建新情境'}
           </h1>
           <p 
             className="mt-1"
             style={{ color: themeVars.textSecondary }}
           >
-            配置你的神圣情境，定义专注的规则。
+            {isEditing ? '修改你的神圣情境配置和规则。' : '配置你的神圣情境，定义专注的规则。'}
           </p>
         </div>
       </div>
@@ -376,7 +393,7 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack }) => {
               color: 'white'
             }}
           >
-            创建情境
+            {isEditing ? '保存修改' : '创建情境'}
           </button>
         </div>
       </div>

@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useThemeVariables, useThemeTransition } from '../hooks/useTheme';
 import { Card } from './ui/card';
-import { Play, BookOpen, Zap, List, Plus, Calendar, TrendingUp } from 'lucide-react';
+import { Play, BookOpen, Zap, List, Plus, Calendar, TrendingUp, Timer, Bell } from 'lucide-react';
 import { useCTDPActions } from '../features/ctdp/hooks';
 import { useAtomValue } from 'jotai';
 import { contextsWithChainsAtom, contextsLoadingAtom, contextsErrorAtom } from '../features/ctdp/atoms';
 import CreateContextPage from './CreateContextPage';
+import ContextManagementPage from './ContextManagementPage';
 
 const StartPage: React.FC = () => {
   const themeVars = useThemeVariables();
   const transition = useThemeTransition();
   
   // 页面状态管理
-  const [currentView, setCurrentView] = useState<'main' | 'create'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'create' | 'manage'>('main');
+  const [selectedContext, setSelectedContext] = useState<{id: string, name: string} | null>(null);
   
   // CTDP hooks and state
   const { loadContextsWithChains, startSession, initializeData } = useCTDPActions();
@@ -85,6 +87,20 @@ const StartPage: React.FC = () => {
   // 如果是创建页面，显示创建组件
   if (currentView === 'create') {
     return <CreateContextPage onBack={() => setCurrentView('main')} />;
+  }
+
+  // 如果是管理页面，显示管理组件
+  if (currentView === 'manage' && selectedContext) {
+    return (
+      <ContextManagementPage 
+        contextId={selectedContext.id}
+        contextName={selectedContext.name}
+        onBack={() => {
+          setCurrentView('main');
+          setSelectedContext(null);
+        }}
+      />
+    );
   }
 
   // 加载状态
@@ -196,7 +212,7 @@ const StartPage: React.FC = () => {
 
       {/* 情境卡片网格 - 可滚动区域 */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8">
+        <div className="flex flex-wrap gap-6 pb-8 justify-start">
           {contexts?.map((context) => {
             const IconComponent = getContextIcon(context.icon);
             const activeChain = context.activeChain;
@@ -207,110 +223,149 @@ const StartPage: React.FC = () => {
             return (
               <Card
                 key={context.id}
-                className="p-6 cursor-pointer transition-all duration-200 hover:scale-105 hover:z-10 relative"
+                className="gap-0 py-0 cursor-pointer transition-all duration-200 hover:scale-105 hover:z-10 relative flex flex-col overflow-hidden"
                 style={{
                   backgroundColor: themeVars.backgroundSecondary,
                   borderColor: themeVars.borderPrimary,
-                  borderRadius: themeVars.borderRadiusLg
+                  borderRadius: themeVars.borderRadiusLg,
+                  width: '280px',
+                  height: '320px'
                 }}
-                onClick={() => handleStartSession(context.id, context.name)}
+                onClick={() => {
+                  setSelectedContext({ id: context.id, name: context.name });
+                  setCurrentView('manage');
+                }}
               >
-                {/* 卡片头部 */}
-                <div className="flex items-center justify-between mb-6">
-                  <div 
-                    className="w-12 h-12 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: context.color || '#3B82F6' }}
-                  >
-                    <IconComponent size={24} color="white" />
-                  </div>
-                  <div className="text-right">
+                {/* 顶部区域 - 紧凑布局 */}
+                <div className="flex-shrink-0 p-4 pb-3">
+                  {/* 图标和链长 */}
+                  <div className="flex items-center justify-between mb-3">
                     <div 
-                      className="text-2xl font-bold"
-                      style={{ 
-                        color: themeVars.textPrimary,
-                        fontSize: '24px',
-                        fontWeight: '700'
-                      }}
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: context.color || '#3B82F6' }}
                     >
-                      #{chainLength}
+                      <IconComponent size={20} color="white" />
                     </div>
-                    <div 
-                      className="text-sm"
-                      style={{ 
-                        color: themeVars.textSecondary,
-                        fontSize: '12px'
-                      }}
-                    >
-                      当前链长
+                    <div className="text-right">
+                      <div 
+                        className="text-2xl font-bold leading-none pt-1"
+                        style={{ color: themeVars.textPrimary }}
+                      >
+                        #{chainLength}
+                      </div>
+                      <div 
+                        className="text-xs mt-1"
+                        style={{ color: themeVars.textSecondary }}
+                      >
+                        当前链长
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* 卡片标题和描述 */}
-                <div className="mb-4">
+                  {/* 标题 */}
                   <h3 
-                    className="text-xl font-semibold mb-1"
+                    className="text-lg font-bold mb-2 leading-tight"
                     style={{ 
                       color: themeVars.textPrimary,
                       fontSize: '18px',
-                      fontWeight: '600'
+                      fontWeight: '700'
                     }}
                   >
                     {context.name}
                   </h3>
-                  {context.description && (
-                    <p 
-                      className="text-sm"
-                      style={{ 
-                        color: themeVars.textSecondary,
-                        fontSize: '13px'
-                      }}
-                    >
-                      {context.description}
-                    </p>
-                  )}
                 </div>
 
-                {/* 统计信息 */}
-                <div className="mb-4 grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div style={{ color: themeVars.textSecondary }}>上次活动</div>
-                    <div style={{ color: themeVars.textPrimary }}>{lastActivity}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: themeVars.textSecondary }}>成功率</div>
-                    <div style={{ color: themeVars.textPrimary }}>{successRate}%</div>
-                  </div>
-                </div>
-
-                {/* 进度条 */}
-                <div className="w-full">
+                {/* 中间区域 - 固定高度的描述块 */}
+                <div className="flex-shrink-0 px-4 mb-3">
                   <div 
-                    className="w-full h-2 rounded-full"
-                    style={{ backgroundColor: `${context.color || '#3B82F6'}20` }}
-                  >
-                    <div
-                      className="h-2 rounded-full transition-all duration-300"
-                      style={{
-                        backgroundColor: context.color || '#3B82F6',
-                        width: `${Math.min(successRate, 100)}%`
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* 启动按钮 */}
-                <div className="mt-4">
-                  <button
-                    className="w-full py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                    style={{
-                      backgroundColor: context.color || '#3B82F6',
-                      color: 'white'
+                    className="text-sm overflow-hidden"
+                    style={{ 
+                      color: themeVars.textSecondary,
+                      fontSize: '13px',
+                      lineHeight: '1.4',
+                      height: '36px',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      textAlign: 'start'
                     }}
                   >
-                    <Play size={16} />
-                    启动
-                  </button>
+                    {context.description || '暂无描述'}
+                  </div>
+                </div>
+
+                {/* 统计信息区域 */}
+                <div className="flex-1 px-4 flex flex-col justify-center min-h-0">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span 
+                        className="text-sm flex items-center gap-1"
+                        style={{ color: themeVars.textSecondary }}
+                      >
+                        <Calendar size={12} />
+                        上次活动
+                      </span>
+                      <span 
+                        className="text-sm font-medium"
+                        style={{ color: themeVars.textPrimary }}
+                      >
+                        {lastActivity}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <span 
+                        className="text-sm flex items-center gap-1"
+                        style={{ color: themeVars.textSecondary }}
+                      >
+                        <TrendingUp size={12} />
+                        成功率
+                      </span>
+                      <span 
+                        className="text-sm font-medium"
+                        style={{ color: successRate >= 80 ? '#10B981' : successRate >= 60 ? '#F59E0B' : '#EF4444' }}
+                      >
+                        {successRate}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 底部按钮区域 - 固定位置 */}
+                <div className="flex-shrink-0 p-4 pt-2">
+                  <div className="flex items-center gap-2">
+                    {/* 预约启动小铃铛 */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('预约启动:', context.name);
+                      }}
+                      className="w-10 h-10 rounded-lg flex items-center justify-center border transition-colors"
+                      style={{
+                        borderColor: themeVars.borderPrimary,
+                        backgroundColor: 'transparent',
+                        color: themeVars.textSecondary
+                      }}
+                    >
+                      <Bell size={16} />
+                    </button>
+                    
+                    {/* 立即开始按钮 */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartSession(context.id, context.name);
+                      }}
+                      className="flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                      style={{
+                        backgroundColor: context.color || '#3B82F6',
+                        color: 'white'
+                      }}
+                    >
+                      <Play size={16} />
+                      立即开始
+                    </button>
+                  </div>
                 </div>
               </Card>
             );
