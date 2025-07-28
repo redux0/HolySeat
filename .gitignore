@@ -13,3 +13,6 @@ jspm_packages/
 
 # Docs
 docs/
+
+# DB
+prisma/dev.db

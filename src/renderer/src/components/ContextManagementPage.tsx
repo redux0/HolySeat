@@ -1,14 +1,30 @@
 import React, { useState } from 'react';
+import { useAtomValue } from 'jotai';
 import { useThemeVariables } from '../hooks/useTheme';
-import { ArrowLeft, Settings, Delete } from 'lucide-react';
-import ChainHistoryList from './ChainHistoryList';
+import { ArrowLeft, Settings, Delete, BrainCircuit, BookOpen, Zap, Wind, Sparkles, Wand2 } from 'lucide-react';
 import CreateContextPage from './CreateContextPage';
+import { contextsWithChainsAtom } from '../features/ctdp/atoms';
+import { useCTDPActions } from '../features/ctdp/hooks';
 
 interface ContextManagementPageProps {
   contextId: string;
   contextName: string;
   onBack: () => void;
 }
+
+// 图标映射函数
+const getContextIcon = (iconName?: string) => {
+  const iconMap: { [key: string]: React.ComponentType<any> } = {
+    'BrainCircuit': BrainCircuit,
+    'BookOpen': BookOpen,
+    'Zap': Zap,
+    'Wind': Wind,
+    'Sparkles': Sparkles,
+    'Wand2': Wand2,
+  };
+  
+  return iconMap[iconName || 'BrainCircuit'] || BrainCircuit;
+};
 
 // Mock链历史数据
 const mockChainHistory = [
@@ -81,6 +97,65 @@ const ContextManagementPage: React.FC<ContextManagementPageProps> = ({
 }) => {
   const themeVars = useThemeVariables();
   const [isEditing, setIsEditing] = useState(false);
+  const { deleteSacredContext } = useCTDPActions();
+  const contextsWithChains = useAtomValue(contextsWithChainsAtom);
+  
+  // 根据 contextId 查找对应的情境数据
+  const currentContext = contextsWithChains?.find(ctx => ctx.id === contextId);
+  
+  // 如果数据未加载或找不到对应情境，显示加载状态
+  if (!contextsWithChains || !currentContext) {
+    return (
+      <div 
+        className="h-full flex items-center justify-center"
+        style={{
+          backgroundColor: themeVars.backgroundPrimary,
+          color: themeVars.textSecondary
+        }}
+      >
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p>加载情境数据...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // 解析规则数据
+  const getRulesData = () => {
+    if (!currentContext?.rules) return { defaultDuration: 45, items: [] };
+    
+    try {
+      const rulesData = typeof currentContext.rules === 'string' 
+        ? JSON.parse(currentContext.rules) 
+        : currentContext.rules;
+      return {
+        defaultDuration: rulesData.defaultDuration || 45,
+        items: rulesData.items || []
+      };
+    } catch (error) {
+      console.error('解析规则数据失败:', error);
+      return { defaultDuration: 45, items: [] };
+    }
+  };
+  
+  const rulesData = getRulesData();
+  
+  // 获取情境图标组件
+  const IconComponent = getContextIcon(currentContext?.icon);
+  
+  // 处理删除情境
+  const handleDeleteContext = async () => {
+    if (window.confirm(`确定要删除情境"${contextName}"吗？此操作不可撤销。`)) {
+      try {
+        await deleteSacredContext(contextId);
+        onBack(); // 删除成功后返回上级页面
+      } catch (error) {
+        console.error('删除情境失败:', error);
+        alert('删除情境失败，请重试。');
+      }
+    }
+  };
 
   // 如果是编辑模式，显示创建页面组件
   if (isEditing) {
@@ -114,16 +189,16 @@ const ContextManagementPage: React.FC<ContextManagementPageProps> = ({
         <div className="flex items-center gap-3">
           <div 
             className="w-10 h-10 rounded-lg flex items-center justify-center"
-            style={{ backgroundColor: '#6366F1' }}
+            style={{ backgroundColor: currentContext?.color || '#6366F1' }}
           >
-            <span className="text-white text-lg font-bold">🧠</span>
+            <IconComponent size={20} color="white" />
           </div>
           <div>
             <h1 
               className="text-xl font-bold"
               style={{ color: themeVars.textPrimary }}
             >
-              {contextName}
+              {currentContext?.name || contextName}
             </h1>
             <p 
               className="text-sm"
@@ -165,7 +240,7 @@ const ContextManagementPage: React.FC<ContextManagementPageProps> = ({
                   className="mt-1 text-lg font-semibold"
                   style={{ color: themeVars.textPrimary }}
                 >
-                  45 分钟
+                  {rulesData.defaultDuration} 分钟
                 </div>
               </div>
               
@@ -177,11 +252,36 @@ const ContextManagementPage: React.FC<ContextManagementPageProps> = ({
                   行为准则
                 </label>
                 <div className="mt-2 space-y-1 text-sm">
-                  <div style={{ color: themeVars.textPrimary }}>1. 关闭所有社交软件。</div>
-                  <div style={{ color: themeVars.textPrimary }}>2. 手机静音并反面放置。</div>
-                  <div style={{ color: themeVars.textPrimary }}>3. 只允许使用VS Code和相关开发工具。</div>
+                  {rulesData.items.length > 0 ? (
+                    rulesData.items.map((rule, index) => (
+                      <div key={index} style={{ color: themeVars.textPrimary }}>
+                        {index + 1}. {rule}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ color: themeVars.textSecondary }}>
+                      暂无行为准则
+                    </div>
+                  )}
                 </div>
               </div>
+              
+              {currentContext?.description && (
+                <div>
+                  <label 
+                    className="text-sm font-medium"
+                    style={{ color: themeVars.textSecondary }}
+                  >
+                    情境描述
+                  </label>
+                  <div 
+                    className="mt-1 text-sm"
+                    style={{ color: themeVars.textPrimary }}
+                  >
+                    {currentContext.description}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -200,6 +300,7 @@ const ContextManagementPage: React.FC<ContextManagementPageProps> = ({
               编辑情境
             </button>
             <button
+              onClick={handleDeleteContext}
               className="w-full py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               style={{
                 backgroundColor: '#EF4444',
@@ -213,8 +314,72 @@ const ContextManagementPage: React.FC<ContextManagementPageProps> = ({
         </div>
 
         {/* 右侧链历史区域 */}
-        <div className="flex-1 flex flex-col">
-          <ChainHistoryList chains={mockChainHistory} />
+        <div className="flex-1 flex flex-col p-6">
+          <div 
+            className="rounded-lg p-6 flex-1"
+            style={{
+              backgroundColor: themeVars.backgroundSecondary,
+              border: `1px solid ${themeVars.borderPrimary}`
+            }}
+          >
+            <h3 
+              className="text-lg font-semibold mb-4"
+              style={{ color: themeVars.textPrimary }}
+            >
+              链历史记录
+            </h3>
+            
+            {/* 显示活跃链信息 */}
+            {currentContext?.activeChain ? (
+              <div className="space-y-4">
+                <div 
+                  className="p-4 rounded-lg"
+                  style={{
+                    backgroundColor: themeVars.backgroundInteractive,
+                    border: `1px solid ${themeVars.borderPrimary}`
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span 
+                      className="text-sm font-medium"
+                      style={{ color: themeVars.textPrimary }}
+                    >
+                      当前活跃链
+                    </span>
+                    <span 
+                      className="px-2 py-1 rounded text-xs font-medium"
+                      style={{
+                        backgroundColor: '#10B981',
+                        color: 'white'
+                      }}
+                    >
+                      活跃中
+                    </span>
+                  </div>
+                  <div 
+                    className="text-xl font-bold"
+                    style={{ color: themeVars.textPrimary }}
+                  >
+                    链长: #{currentContext.activeChain.counter}
+                  </div>
+                  <div 
+                    className="text-sm mt-1"
+                    style={{ color: themeVars.textSecondary }}
+                  >
+                    创建于: {new Date(currentContext.activeChain.createdAt).toLocaleDateString('zh-CN')}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div 
+                className="text-center py-8"
+                style={{ color: themeVars.textSecondary }}
+              >
+                <p>暂无活跃的链记录</p>
+                <p className="text-sm mt-2">开始一个专注会话来创建新的链</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

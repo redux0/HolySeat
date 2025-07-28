@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
+import { useAtomValue } from 'jotai';
 import { useThemeVariables } from '../hooks/useTheme';
+import { useCTDPActions } from '../features/ctdp/hooks';
+import { contextsWithChainsAtom } from '../features/ctdp/atoms';
+import { toast } from './ui/toast';
 import { 
   BrainCircuit, 
   BookOpen, 
@@ -41,30 +45,131 @@ interface CreateContextPageProps {
 
 const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing = false, contextId }) => {
   const themeVars = useThemeVariables();
+  const { createSacredContext, updateSacredContext } = useCTDPActions();
+  const contextsWithChains = useAtomValue(contextsWithChainsAtom);
   
   // 表单状态
   const [contextName, setContextName] = useState('');
+  const [contextDescription, setContextDescription] = useState('');
   const [selectedIcon, setSelectedIcon] = useState(iconOptions[0].name);
   const [selectedColor, setSelectedColor] = useState(colorOptions[0].name);
   const [defaultDuration, setDefaultDuration] = useState(45);
   const [rules, setRules] = useState('');
   const [triggerAction, setTriggerAction] = useState('');
   const [selectedPresetTime, setSelectedPresetTime] = useState('15分钟');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 如果是编辑模式，加载现有配置
   React.useEffect(() => {
-    if (isEditing && contextId) {
-      // TODO: 从数据库加载现有配置
-      // 这里使用Mock数据模拟
-      setContextName('深度工作');
-      setSelectedIcon('BrainCircuit');
-      setSelectedColor('indigo');
-      setDefaultDuration(45);
-      setRules('1. 关闭所有社交软件。\n2. 手机静音并反面放置。\n3. 只允许使用VS Code和相关开发工具。');
-      setTriggerAction('打一个响指');
-      setSelectedPresetTime('15分钟');
+    if (isEditing && contextId && contextsWithChains) {
+      // 从已加载的情境列表中查找要编辑的情境
+      const existingContext = contextsWithChains.find(ctx => ctx.id === contextId);
+      
+      if (existingContext) {
+        setContextName(existingContext.name || '');
+        setContextDescription(existingContext.description || '');
+        setSelectedIcon(existingContext.icon || iconOptions[0].name);
+        
+        // 根据颜色hex值查找对应的颜色名称
+        const colorOption = colorOptions.find(option => option.hex === existingContext.color);
+        setSelectedColor(colorOption?.name || colorOptions[0].name);
+        
+        // 从规则JSON中解析数据
+        if (existingContext.rules) {
+          try {
+            const rulesData = typeof existingContext.rules === 'string' 
+              ? JSON.parse(existingContext.rules) 
+              : existingContext.rules;
+            
+            if (rulesData.defaultDuration) {
+              setDefaultDuration(rulesData.defaultDuration);
+            }
+            if (rulesData.items && Array.isArray(rulesData.items)) {
+              setRules(rulesData.items.join('\n'));
+            }
+            if (rulesData.triggerAction) {
+              setTriggerAction(rulesData.triggerAction);
+            }
+            if (rulesData.presetTime) {
+              setSelectedPresetTime(rulesData.presetTime);
+            }
+          } catch (error) {
+            console.error('解析规则数据失败:', error);
+            // 使用默认值
+          }
+        }
+      } else {
+        console.warn(`未找到ID为 ${contextId} 的情境`);
+        toast.error('未找到要编辑的情境数据');
+      }
     }
-  }, [isEditing, contextId]);
+  }, [isEditing, contextId, contextsWithChains]);
+
+  // 表单验证
+  const validateForm = () => {
+    if (!contextName.trim()) {
+      toast.error('情境名称不能为空');
+      return false;
+    }
+    if (contextName.length > 50) {
+      toast.error('情境名称不能超过50个字符');
+      return false;
+    }
+    if (contextDescription.length > 200) {
+      toast.error('情境描述不能超过200个字符');
+      return false;
+    }
+    if (rules.length > 1000) {
+      toast.error('行为准则不能超过1000个字符');
+      return false;
+    }
+    return true;
+  };
+
+  // 处理保存/创建
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const contextData = {
+        name: contextName.trim(),
+        description: contextDescription.trim() || undefined,
+        icon: selectedIcon,
+        color: colorOptions.find(c => c.name === selectedColor)?.hex || '#6366F1',
+        rules: {
+          items: rules.split('\n').filter(rule => rule.trim()),
+          defaultDuration: defaultDuration,
+          triggerAction: triggerAction.trim() || undefined,
+          presetTime: selectedPresetTime
+        },
+        environment: {
+          // 可以添加环境相关配置
+          strictMode: true
+        }
+      };
+
+      if (isEditing && contextId) {
+        await updateSacredContext(contextId, contextData);
+        toast.success('情境修改成功');
+      } else {
+        await createSacredContext(contextData);
+        toast.success('情境创建成功');
+      }
+      
+      // 延迟一下再返回，让用户看到成功提示
+      setTimeout(() => {
+        onBack();
+      }, 1000);
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '操作失败';
+      toast.error(isEditing ? `情境修改失败: ${errorMessage}` : `情境创建失败: ${errorMessage}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const IconComponent = iconOptions.find(i => i.name === selectedIcon)?.component || BrainCircuit;
   const colorHex = colorOptions.find(c => c.name === selectedColor)?.hex || '#6366F1';
@@ -141,6 +246,32 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
                       color: themeVars.textPrimary
                     }}
                   />
+                </div>
+                
+                <div>
+                  <label 
+                    htmlFor="context-description" 
+                    className="text-sm font-medium"
+                    style={{ color: themeVars.textSecondary }}
+                  >
+                    情境描述 (可选)
+                  </label>
+                  <textarea
+                    id="context-description"
+                    value={contextDescription}
+                    onChange={(e) => setContextDescription(e.target.value)}
+                    placeholder="描述这个情境的用途和特点，例如：需要高度专注的工作任务，如编程、写作、研究等"
+                    rows={3}
+                    className="w-full mt-2 p-3 rounded-md border outline-none transition focus:ring-2 focus:ring-indigo-500 resize-none"
+                    style={{
+                      backgroundColor: themeVars.backgroundSecondary,
+                      borderColor: themeVars.backgroundInteractive,
+                      color: themeVars.textPrimary
+                    }}
+                  />
+                  <div className="text-xs mt-1" style={{ color: themeVars.textSecondary }}>
+                    {contextDescription.length}/200
+                  </div>
                 </div>
                 <div className="flex space-x-8">
                   <div>
@@ -378,7 +509,8 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
         <div className="mt-12 flex justify-end space-x-4 max-w-3xl mx-auto">
           <button 
             onClick={onBack}
-            className="px-6 py-2 rounded-md font-semibold transition"
+            disabled={isSubmitting}
+            className="px-6 py-2 rounded-md font-semibold transition disabled:opacity-50"
             style={{
               backgroundColor: `${themeVars.backgroundSecondary}50`,
               color: themeVars.textSecondary
@@ -387,13 +519,18 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
             取消
           </button>
           <button 
-            className="px-6 py-2 rounded-md font-semibold transition hover:opacity-90"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="px-6 py-2 rounded-md font-semibold transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               backgroundColor: '#6366F1',
               color: 'white'
             }}
           >
-            {isEditing ? '保存修改' : '创建情境'}
+            {isSubmitting 
+              ? (isEditing ? '保存中...' : '创建中...') 
+              : (isEditing ? '保存修改' : '创建情境')
+            }
           </button>
         </div>
       </div>
