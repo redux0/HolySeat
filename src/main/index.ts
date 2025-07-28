@@ -2,6 +2,8 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../resources/icon.png'
+import { initDatabase, closeDatabase } from './database'
+import { registerCTDPHandlers, unregisterCTDPHandlers } from './ipc/ctdpHandlers'
 
 function createWindow(): void {
   // Create the browser window.
@@ -42,7 +44,19 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // 初始化数据库
+  console.log('🚀 启动HolySeat应用...')
+  const dbInitialized = await initDatabase()
+  if (!dbInitialized) {
+    console.error('❌ 数据库初始化失败，应用无法启动')
+    app.quit()
+    return
+  }
+
+  // 注册IPC处理器
+  registerCTDPHandlers()
+
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -66,7 +80,13 @@ app.whenReady().then(() => {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
+  // 清理IPC处理器
+  unregisterCTDPHandlers()
+  
+  // 关闭数据库连接
+  await closeDatabase()
+  
   if (process.platform !== 'darwin') {
     app.quit()
   }
