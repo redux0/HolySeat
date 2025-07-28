@@ -1,14 +1,18 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useThemeVariables, useThemeTransition } from '../hooks/useTheme';
 import { Card } from './ui/card';
 import { Play, BookOpen, Zap, List, Plus, Calendar, TrendingUp } from 'lucide-react';
 import { useCTDPActions } from '../features/ctdp/hooks';
 import { useAtomValue } from 'jotai';
 import { contextsWithChainsAtom, contextsLoadingAtom, contextsErrorAtom } from '../features/ctdp/atoms';
+import CreateContextPage from './CreateContextPage';
 
 const StartPage: React.FC = () => {
   const themeVars = useThemeVariables();
   const transition = useThemeTransition();
+  
+  // 页面状态管理
+  const [currentView, setCurrentView] = useState<'main' | 'create'>('main');
   
   // CTDP hooks and state
   const { loadContextsWithChains, startSession, initializeData } = useCTDPActions();
@@ -77,6 +81,11 @@ const StartPage: React.FC = () => {
     if (diffDays < 7) return `${diffDays}天前`;
     return date.toLocaleDateString('zh-CN');
   };
+
+  // 如果是创建页面，显示创建组件
+  if (currentView === 'create') {
+    return <CreateContextPage onBack={() => setCurrentView('main')} />;
+  }
 
   // 加载状态
   if (loading) {
@@ -172,6 +181,7 @@ const StartPage: React.FC = () => {
             统计
           </button>
           <button
+            onClick={() => setCurrentView('create')}
             className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
             style={{
               backgroundColor: '#3B82F6',
