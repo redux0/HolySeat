@@ -14,21 +14,8 @@ const TopBar: React.FC<TopBarProps> = ({
   chainCount = 12,
   timeRemaining = '45:32'
 }) => {
-  if (!isActive) {
-    return null;
-  }
-
-  return (
-    <header className={cn(
-      "h-10 bg-card border-b border-border",
-      "flex items-center justify-center",
-      "text-sm font-medium text-foreground"
-    )}>
-      <span>
-        Status: Sacred Context '{contextName}' | #{chainCount} | 剩下 {timeRemaining}
-      </span>
-    </header>
-  );
+  // 根据参考图，不显示顶部状态栏
+  return null;
 };
 
 export default TopBar;

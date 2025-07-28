@@ -19,7 +19,8 @@
       "@renderer/*": ["src/renderer/src/*"],
       "@/components/*": ["src/renderer/src/components/*"],
       "@/lib/*": ["src/renderer/src/lib/*"],
-      "@/hooks/*": ["src/renderer/src/hooks/*"]
+      "@/hooks/*": ["src/renderer/src/hooks/*"],
+      "@/contexts/*": ["src/renderer/src/contexts/*"]
     }
   },
   "include": ["electron.vite.config.ts", "src/main/**/*", "src/preload/**/*", "src/renderer/src/**/*", "src/env.d.ts"]
