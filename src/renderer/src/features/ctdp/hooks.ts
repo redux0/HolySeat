@@ -201,19 +201,17 @@ export function useCTDPActions() {
   /**
    * 断裂链（任务失败）
    */
-  const breakSession = async (reason: string, metadata?: any) => {
+  const breakSession = async (params: {
+    chainId: string
+    reason: string
+    metadata?: any
+  }) => {
     if (!ipcRenderer) return null
 
-    const activeSession = activeSessionAtom
-    // TODO: 获取当前活跃会话的chainId
-
     try {
-      // 这里需要从当前活跃会话获取chainId
-      const chainId = 'current-chain-id' // 实际应该从activeSession获取
-      
-      const result = await ipcRenderer.invoke('ctdp:breakChain', chainId, {
-        reason,
-        metadata
+      const result = await ipcRenderer.invoke('ctdp:breakChain', params.chainId, {
+        reason: params.reason,
+        metadata: params.metadata
       })
       console.log('💔 断裂链:', result)
       

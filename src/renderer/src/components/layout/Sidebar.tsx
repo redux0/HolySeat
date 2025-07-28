@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Settings, TreeDeciduous, BookUser, Calendar, BarChart3 } from 'lucide-react';
+import { Home, Settings, TreeDeciduous, BookUser, Calendar, BarChart3, Focus } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '../../lib/utils';
@@ -21,6 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
     { icon: BarChart3, text: '仪表盘', id: 'dashboard' },
     { icon: BookUser, text: '链管理', id: 'chains' },
     { icon: TreeDeciduous, text: 'RSIP 定式树', id: 'rsip-tree' },
+    { icon: Focus, text: '专注页面演示', id: 'focus-demo' },
   ];
 
   return (
