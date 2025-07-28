@@ -12,7 +12,15 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "noEmit": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/renderer/src/*"],
+      "@renderer/*": ["src/renderer/src/*"],
+      "@/components/*": ["src/renderer/src/components/*"],
+      "@/lib/*": ["src/renderer/src/lib/*"],
+      "@/hooks/*": ["src/renderer/src/hooks/*"]
+    }
   },
   "include": ["electron.vite.config.ts", "src/main/**/*", "src/preload/**/*", "src/renderer/src/**/*", "src/env.d.ts"]
 }
