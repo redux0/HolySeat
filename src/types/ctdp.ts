@@ -122,8 +122,18 @@ export interface CreateAuxiliaryChainRequest {
 /** 带有活跃链信息的神圣情境 */
 export interface ContextWithActiveChain extends SacredContext {
   activeChain?: CTDPChain & {
-    logs: CTDPLog[];
+    logs: (CTDPLog & { tags: Tag[] })[];
   };
+}
+
+/** 带有所有链信息的神圣情境（用于管理页面） */
+export interface ContextWithAllChains extends SacredContext {
+  activeChain?: CTDPChain & {
+    logs: (CTDPLog & { tags: Tag[] })[];
+  };
+  allChains?: (CTDPChain & {
+    logs: (CTDPLog & { tags: Tag[] })[];
+  })[];
 }
 
 /** 带有详细日志的链 */

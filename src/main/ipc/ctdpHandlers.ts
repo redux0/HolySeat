@@ -26,6 +26,16 @@ export function registerCTDPHandlers() {
     }
   })
 
+  // 获取单个情境及其所有链信息
+  ipcMain.handle('ctdp:getContextWithAllChains', async (_, contextId: string) => {
+    try {
+      return await chainService.getContextWithAllChains(contextId)
+    } catch (error) {
+      console.error('IPC Error - getContextWithAllChains:', error)
+      throw error
+    }
+  })
+
   // 启动或继续链
   ipcMain.handle('ctdp:startOrContinueChain', async (_, contextId: string, taskInfo?: any) => {
     try {

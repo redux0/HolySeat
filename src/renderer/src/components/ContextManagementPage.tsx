@@ -114,8 +114,8 @@ const ChainLogItem: React.FC<{ log: any; themeVars: any }> = ({ log, themeVars }
 // 链手风琴项组件
 const ChainAccordionItem: React.FC<{ chain: any; themeVars: any }> = ({ chain, themeVars }) => {
   const [isOpen, setIsOpen] = useState(chain.status === 'ACTIVE');
-  const isBroken = chain.status === 'BROKEN';
-  const isActive = chain.status === 'ACTIVE';
+  const isBroken = chain.status === 'BROKEN' || chain.brokenAt;
+  const isActive = chain.status === 'ACTIVE' && !chain.brokenAt;
 
   return (
     <div 
@@ -146,7 +146,7 @@ const ChainAccordionItem: React.FC<{ chain: any; themeVars: any }> = ({ chain, t
         </div>
         <span className="text-xs" style={{ color: themeVars.textSecondary }}>
           {new Date(chain.createdAt).toLocaleDateString('zh-CN')}
-          {chain.endedAt && ` - ${new Date(chain.endedAt).toLocaleDateString('zh-CN')}`}
+          {chain.brokenAt && ` - ${new Date(chain.brokenAt).toLocaleDateString('zh-CN')}`}
         </span>
       </button>
       {isOpen && (
@@ -176,80 +176,35 @@ const ContextManagementPage: React.FC<ContextManagementPageProps> = ({
 }) => {
   const themeVars = useThemeVariables();
   const [isEditing, setIsEditing] = useState(false);
-  const { deleteSacredContext } = useCTDPActions();
+  const [contextWithAllChains, setContextWithAllChains] = useState<any>(null);
+  const [loadingChains, setLoadingChains] = useState(true);
+  const { deleteSacredContext, getContextWithAllChains } = useCTDPActions();
   const contextsWithChains = useAtomValue(contextsWithChainsAtom);
   
   // 根据 contextId 查找对应的情境数据
   const currentContext = contextsWithChains?.find(ctx => ctx.id === contextId);
 
-  // 模拟链数据（按照设计图样式）
-  const mockChains = [
-    {
-      id: 'chain-1',
-      status: 'ACTIVE',
-      counter: 27,
-      createdAt: '2025-07-16',
-      logs: [
-        { 
-          id: '1',
-          type: LogType.SUCCESS, 
-          title: '完成CTDP模块设计文档', 
-          duration: 3600, 
-          tags: [{ name: '文档' }, { name: '核心功能' }], 
-          createdAt: '2025-07-28T10:00:00Z' 
-        },
-        { 
-          id: '2',
-          type: LogType.SUCCESS, 
-          title: '修复UI Bug', 
-          duration: 1800, 
-          tags: [{ name: '前端' }, { name: 'Bugfix' }], 
-          createdAt: '2025-07-27T15:30:00Z' 
-        },
-      ]
-    },
-    {
-      id: 'chain-2',
-      status: 'BROKEN',
-      counter: 15,
-      createdAt: '2025-07-01',
-      endedAt: '2025-07-15',
-      logs: [
-        { 
-          id: '3',
-          type: LogType.BROKEN, 
-          title: '在专注期间使用了非白名单应用', 
-          createdAt: '2025-07-15T21:45:00Z' 
-        },
-        { 
-          id: '4',
-          type: LogType.SUCCESS, 
-          title: '研究Monorepo架构', 
-          duration: 4500, 
-          tags: [{ name: '架构' }, { name: '技术预研' }], 
-          createdAt: '2025-07-15T20:00:00Z' 
-        },
-      ]
-    },
-    {
-      id: 'chain-3',
-      status: 'BROKEN',
-      counter: 8,
-      createdAt: '2025-06-20',
-      endedAt: '2025-06-28',
-      logs: [
-        { 
-          id: '5',
-          type: LogType.BROKEN, 
-          title: '手动中断任务', 
-          createdAt: '2025-06-28T11:00:00Z' 
-        },
-      ]
+  // 加载情境的所有链数据
+  React.useEffect(() => {
+    const loadContextData = async () => {
+      try {
+        setLoadingChains(true);
+        const result = await getContextWithAllChains(contextId);
+        setContextWithAllChains(result);
+      } catch (error) {
+        console.error('加载情境链数据失败:', error);
+      } finally {
+        setLoadingChains(false);
+      }
+    };
+
+    if (contextId) {
+      loadContextData();
     }
-  ];
+  }, [contextId, getContextWithAllChains]); // 重新添加 getContextWithAllChains 但用 useCallback 来稳定化
   
   // 如果数据未加载或找不到对应情境，显示加载状态
-  if (!contextsWithChains || !currentContext) {
+  if (!contextsWithChains || !currentContext || loadingChains || !contextWithAllChains) {
     return (
       <div 
         className="h-full flex items-center justify-center"
@@ -463,9 +418,19 @@ const ContextManagementPage: React.FC<ContextManagementPageProps> = ({
             
             {/* 显示所有链信息（手风琴样式） */}
             <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-              {mockChains.map((chain: any) => (
-                <ChainAccordionItem key={chain.id} chain={chain} themeVars={themeVars} />
-              ))}
+              {contextWithAllChains?.allChains && contextWithAllChains.allChains.length > 0 ? (
+                contextWithAllChains.allChains.map((chain: any) => (
+                  <ChainAccordionItem key={chain.id} chain={chain} themeVars={themeVars} />
+                ))
+              ) : (
+                <div 
+                  className="text-center py-8"
+                  style={{ color: themeVars.textSecondary }}
+                >
+                  <p>暂无链记录</p>
+                  <p className="text-sm mt-2">开始一个专注会话来创建新的链</p>
+                </div>
+              )}
             </div>
           
         </div>
