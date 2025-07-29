@@ -56,6 +56,25 @@ export function useCTDPActions() {
   }
 
   /**
+   * 获取单个情境及其所有链信息
+   */
+  const getContextWithAllChains = async (contextId: string) => {
+    if (!ipcRenderer) {
+      console.error('IPC Renderer not available')
+      return null
+    }
+
+    try {
+      const result = await ipcRenderer.invoke('ctdp:getContextWithAllChains', contextId)
+      console.log('📊 加载情境所有链数据:', result)
+      return result
+    } catch (err) {
+      console.error('获取情境所有链信息失败:', err)
+      throw err
+    }
+  }
+
+  /**
    * 创建新的神圣情境
    */
   const createSacredContext = async (contextData: {
@@ -455,6 +474,7 @@ export function useCTDPActions() {
     
     // 情境管理
     loadContextsWithChains,
+    getContextWithAllChains,
     createSacredContext,
     updateSacredContext,
     deleteSacredContext,

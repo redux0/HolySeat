@@ -6,6 +6,7 @@
 import { PrismaClient, ChainStatus, LogType, AuxChainStatus } from '@prisma/client'
 import type {
   ContextWithActiveChain,
+  ContextWithAllChains,
   ChainWithLogs,
   ActiveSession,
   StartSessionRequest,
@@ -48,6 +49,47 @@ export class ChainService {
     } catch (error) {
       console.error('获取情境列表失败:', error)
       throw new Error('Failed to fetch contexts with active chains')
+    }
+  }
+
+  /**
+   * 获取单个情境及其所有链信息（包括已断裂的）
+   * 用于情境管理页面展示
+   */
+  async getContextWithAllChains(contextId: string): Promise<ContextWithAllChains | null> {
+    try {
+      const context = await this.prisma.sacredContext.findUnique({
+        where: { id: contextId },
+        include: {
+          chains: {
+            orderBy: { createdAt: 'desc' },
+            include: {
+              logs: {
+                orderBy: { createdAt: 'desc' },
+                take: 10,
+                include: { tags: true }
+              }
+            }
+          }
+        }
+      })
+
+      if (!context) return null
+
+      // 为每个链添加状态标识
+      const chainsWithStatus = context.chains.map(chain => ({
+        ...chain,
+        status: chain.status === ChainStatus.ACTIVE ? 'ACTIVE' : 'BROKEN'
+      }))
+
+      return {
+        ...context,
+        activeChain: context.chains.find(chain => chain.status === ChainStatus.ACTIVE) || undefined,
+        allChains: context.chains
+      }
+    } catch (error) {
+      console.error('获取情境所有链信息失败:', error)
+      throw new Error('Failed to fetch context with all chains')
     }
   }
 
