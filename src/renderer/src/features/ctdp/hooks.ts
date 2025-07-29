@@ -476,6 +476,7 @@ export function useCTDPActions() {
     // 情境管理
     loadContextsWithChains,
     getContextWithAllChains,
+    getContextWithAllChains,
     createSacredContext,
     updateSacredContext,
     deleteSacredContext,
