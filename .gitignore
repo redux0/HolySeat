@@ -19,3 +19,4 @@ prisma/dev.db
 
 # Output directories
 out/
+dist/
