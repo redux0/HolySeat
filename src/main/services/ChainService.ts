@@ -215,6 +215,7 @@ export class ChainService {
           duration: logData.duration,
           message: `任务完成，链长度增加至 #${updatedChain.counter}`,
           metadata: {
+            status: 'completed',
             previousCounter: updatedChain.counter - 1,
             newCounter: updatedChain.counter,
             completedAt: new Date().toISOString()

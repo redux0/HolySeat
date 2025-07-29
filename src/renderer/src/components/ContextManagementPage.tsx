@@ -152,9 +152,19 @@ const ChainAccordionItem: React.FC<{ chain: any; themeVars: any }> = ({ chain, t
       {isOpen && (
         <div className="px-4 pb-2">
           {chain.logs && chain.logs.length > 0 ? (
-            chain.logs.map((log: any) => (
-              <ChainLogItem key={log.id} log={log} themeVars={themeVars} />
-            ))
+            chain.logs
+              .filter((log: any) => {
+                // 过滤逻辑：对于SUCCESS类型的日志，只显示已完成的（metadata.status !== 'started'）
+                if (log.type === LogType.SUCCESS) {
+                  const metadata = log.metadata as any;
+                  return !metadata || metadata.status !== 'started';
+                }
+                // 其他类型的日志都显示
+                return true;
+              })
+              .map((log: any) => (
+                <ChainLogItem key={log.id} log={log} themeVars={themeVars} />
+              ))
           ) : (
             <div 
               className="text-center py-4 text-sm"
