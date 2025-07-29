@@ -49,6 +49,27 @@ export const tagsAtom = atom<Tag[]>([])
  */
 export const settingsAtom = atom<CTDPSettings | null>(null)
 
+// ============= 预约功能状态 =============
+
+/**
+ * 预约状态
+ */
+export interface ScheduleState {
+  isActive: boolean
+  contextId: string
+  contextName: string
+  taskTitle: string
+  remainingTime: number // 剩余秒数
+  totalTime: number // 总时间（秒）
+}
+
+export const scheduleStateAtom = atom<ScheduleState | null>(null)
+
+/**
+ * 预约模态框显示状态
+ */
+export const scheduleModalAtom = atom(false)
+
 // ============= 派生状态 =============
 
 /**

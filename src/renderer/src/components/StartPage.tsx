@@ -7,6 +7,7 @@ import { useAtomValue } from 'jotai';
 import { contextsWithChainsAtom, contextsLoadingAtom, contextsErrorAtom } from '../features/ctdp/atoms';
 import CreateContextPage from './CreateContextPage';
 import ContextManagementPage from './ContextManagementPage';
+import ScheduleModal from './ScheduleModal';
 import { getIconComponent, IconNames, ICON_MAP } from '../constants';
 import { SacredContextRules } from '../../../types/ctdp';
 
@@ -17,9 +18,17 @@ const StartPage: React.FC = () => {
   // 页面状态管理
   const [currentView, setCurrentView] = useState<'main' | 'create' | 'manage'>('main');
   const [selectedContext, setSelectedContext] = useState<{id: string, name: string} | null>(null);
+  const [scheduleContext, setScheduleContext] = useState<{id: string, name: string} | null>(null);
   
   // CTDP hooks and state
-  const { loadContextsWithChains, startSession, initializeData } = useCTDPActions();
+  const { 
+    loadContextsWithChains, 
+    startSession, 
+    initializeData,
+    startScheduleCountdown,
+    openScheduleModal,
+    closeScheduleModal
+  } = useCTDPActions();
   const contexts = useAtomValue(contextsWithChainsAtom);
   const loading = useAtomValue(contextsLoadingAtom);
   const error = useAtomValue(contextsErrorAtom);
@@ -47,6 +56,20 @@ const StartPage: React.FC = () => {
     } catch (err) {
       console.error('启动会话失败:', err);
       // TODO: 显示错误提示
+    }
+  };
+
+  // 处理预约启动
+  const handleScheduleStart = (contextId: string, contextName: string) => {
+    setScheduleContext({ id: contextId, name: contextName });
+    openScheduleModal();
+  };
+
+  // 处理预约确认
+  const handleScheduleConfirm = (delayMinutes: number, taskTitle: string) => {
+    if (scheduleContext) {
+      startScheduleCountdown(scheduleContext.id, scheduleContext.name, taskTitle, delayMinutes);
+      setScheduleContext(null);
     }
   };
 
@@ -331,7 +354,7 @@ const StartPage: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        console.log('预约启动:', context.name);
+                        handleScheduleStart(context.id, context.name);
                       }}
                       className="w-10 h-10 rounded-lg flex items-center justify-center border transition-colors"
                       style={{
@@ -365,6 +388,15 @@ const StartPage: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* 预约模态框 */}
+      {scheduleContext && (
+        <ScheduleModal
+          contextId={scheduleContext.id}
+          contextName={scheduleContext.name}
+          onConfirm={handleScheduleConfirm}
+        />
+      )}
     </div>
   );
 };

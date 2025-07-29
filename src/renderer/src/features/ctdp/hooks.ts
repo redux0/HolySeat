@@ -13,7 +13,9 @@ import {
   chainStatisticsAtom,
   contextStatisticsAtom,
   tagsAtom,
-  settingsAtom
+  settingsAtom,
+  scheduleStateAtom,
+  scheduleModalAtom
 } from './atoms'
 
 // IPC调用封装
@@ -28,6 +30,8 @@ export function useCTDPActions() {
   const setContextStatistics = useSetAtom(contextStatisticsAtom)
   const setTags = useSetAtom(tagsAtom)
   const setSettings = useSetAtom(settingsAtom)
+  const [scheduleState, setScheduleState] = useAtom(scheduleStateAtom)
+  const setScheduleModal = useSetAtom(scheduleModalAtom)
 
   // ============= 情境管理 =============
 
@@ -452,6 +456,44 @@ export function useCTDPActions() {
     }
   }
 
+  // ============= 预约功能 =============
+
+  /**
+   * 开始预约倒计时
+   */
+  const startScheduleCountdown = (contextId: string, contextName: string, taskTitle: string, delayMinutes: number) => {
+    const totalTime = delayMinutes * 60; // 转换为秒
+    setScheduleState({
+      isActive: true,
+      contextId,
+      contextName,
+      taskTitle,
+      remainingTime: totalTime,
+      totalTime
+    });
+  };
+
+  /**
+   * 取消预约
+   */
+  const cancelSchedule = () => {
+    setScheduleState(null);
+  };
+
+  /**
+   * 打开预约模态框
+   */
+  const openScheduleModal = () => {
+    setScheduleModal(true);
+  };
+
+  /**
+   * 关闭预约模态框
+   */
+  const closeScheduleModal = () => {
+    setScheduleModal(false);
+  };
+
   // ============= 初始化 =============
 
   /**
@@ -475,7 +517,6 @@ export function useCTDPActions() {
     
     // 情境管理
     loadContextsWithChains,
-    getContextWithAllChains,
     getContextWithAllChains,
     createSacredContext,
     updateSacredContext,
@@ -504,6 +545,13 @@ export function useCTDPActions() {
     // 系统设置
     loadSettings,
     updateSettings,
+    
+    // 预约功能
+    scheduleState,
+    startScheduleCountdown,
+    cancelSchedule,
+    openScheduleModal,
+    closeScheduleModal,
     
     // 初始化
     initializeData
