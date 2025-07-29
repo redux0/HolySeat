@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAtom } from 'jotai';
 import { Clock, X } from 'lucide-react';
 import { useThemeVariables } from '../hooks/useTheme';
 import { scheduleStateAtom } from '../features/ctdp/atoms';
+import CancelScheduleModal from './CancelScheduleModal';
 
 interface CountdownBarProps {
   onComplete: () => void;
@@ -12,6 +13,7 @@ interface CountdownBarProps {
 const CountdownBar: React.FC<CountdownBarProps> = ({ onComplete, onCancel }) => {
   const themeVars = useThemeVariables();
   const [scheduleState, setScheduleState] = useAtom(scheduleStateAtom);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   useEffect(() => {
     if (!scheduleState?.isActive) return;
@@ -42,6 +44,19 @@ const CountdownBar: React.FC<CountdownBarProps> = ({ onComplete, onCancel }) => 
   };
 
   const progressPercentage = ((scheduleState.totalTime - scheduleState.remainingTime) / scheduleState.totalTime) * 100;
+
+  const handleCancelClick = () => {
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = () => {
+    onCancel();
+    setShowCancelModal(false);
+  };
+
+  const handleCancelModalClose = () => {
+    setShowCancelModal(false);
+  };
 
   return (
     <div 
@@ -86,13 +101,21 @@ const CountdownBar: React.FC<CountdownBarProps> = ({ onComplete, onCancel }) => 
 
       {/* 右侧取消按钮 */}
       <button
-        onClick={onCancel}
+        onClick={handleCancelClick}
         className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-opacity-80 transition-colors"
         style={{ backgroundColor: `${themeVars.textSecondary}20` }}
         title="取消预约"
       >
         <X size={16} style={{ color: themeVars.textSecondary }} />
       </button>
+
+      {/* 取消确认Modal */}
+      <CancelScheduleModal
+        isOpen={showCancelModal}
+        contextName={scheduleState.contextName}
+        onConfirm={handleConfirmCancel}
+        onCancel={handleCancelModalClose}
+      />
     </div>
   );
 };

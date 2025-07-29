@@ -4,7 +4,13 @@ import { Card } from './ui/card';
 import { Plus, Calendar, TrendingUp, Timer, Bell } from 'lucide-react';
 import { useCTDPActions } from '../features/ctdp/hooks';
 import { useAtomValue } from 'jotai';
-import { contextsWithChainsAtom, contextsLoadingAtom, contextsErrorAtom } from '../features/ctdp/atoms';
+import { 
+  contextsWithChainsAtom, 
+  contextsLoadingAtom, 
+  contextsErrorAtom,
+  hasActiveScheduleAtom,
+  currentScheduleContextIdAtom
+} from '../features/ctdp/atoms';
 import CreateContextPage from './CreateContextPage';
 import ContextManagementPage from './ContextManagementPage';
 import ScheduleModal from './ScheduleModal';
@@ -32,6 +38,8 @@ const StartPage: React.FC = () => {
   const contexts = useAtomValue(contextsWithChainsAtom);
   const loading = useAtomValue(contextsLoadingAtom);
   const error = useAtomValue(contextsErrorAtom);
+  const hasActiveSchedule = useAtomValue(hasActiveScheduleAtom);
+  const currentScheduleContextId = useAtomValue(currentScheduleContextIdAtom);
 
   // 初始化数据加载
   useEffect(() => {
@@ -236,6 +244,11 @@ const StartPage: React.FC = () => {
             const successRate = calculateSuccessRate(context);
             const lastActivity = formatLastActivity(context);
             
+            // 按钮状态逻辑
+            const isCurrentScheduleContext = currentScheduleContextId === context.id;
+            const shouldDisableSchedule = hasActiveSchedule && !isCurrentScheduleContext;
+            const shouldDisableStart = hasActiveSchedule && !isCurrentScheduleContext;
+            
             return (
               <Card
                 key={context.id}
@@ -354,14 +367,20 @@ const StartPage: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleScheduleStart(context.id, context.name);
+                        if (!shouldDisableSchedule) {
+                          handleScheduleStart(context.id, context.name);
+                        }
                       }}
-                      className="w-10 h-10 rounded-lg flex items-center justify-center border transition-colors"
+                      disabled={shouldDisableSchedule}
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-colors ${
+                        shouldDisableSchedule ? 'cursor-not-allowed opacity-50' : 'hover:bg-opacity-80'
+                      }`}
                       style={{
                         borderColor: themeVars.borderPrimary,
                         backgroundColor: 'transparent',
-                        color: themeVars.textSecondary
+                        color: shouldDisableSchedule ? themeVars.textSecondary : themeVars.textSecondary
                       }}
+                      title={shouldDisableSchedule ? '有其他预约正在进行中' : '预约启动'}
                     >
                       <Bell size={16} />
                     </button>
@@ -370,16 +389,24 @@ const StartPage: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleStartSession(context.id, context.name);
+                        if (!shouldDisableStart) {
+                          handleStartSession(context.id, context.name);
+                        }
                       }}
-                      className="flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                      disabled={shouldDisableStart}
+                      className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                        shouldDisableStart ? 'cursor-not-allowed opacity-50' : 'hover:bg-opacity-90'
+                      }`}
                       style={{
-                        backgroundColor: context.color || '#3B82F6',
+                        backgroundColor: shouldDisableStart 
+                          ? themeVars.textSecondary 
+                          : (context.color || '#3B82F6'),
                         color: 'white'
                       }}
+                      title={shouldDisableStart ? '有其他预约正在进行中' : '立即开始'}
                     >
                       {React.createElement(ICON_MAP[IconNames.PLAY], { size: 16 })}
-                      立即开始
+                      {isCurrentScheduleContext ? '立即开始 (预约中)' : '立即开始'}
                     </button>
                   </div>
                 </div>

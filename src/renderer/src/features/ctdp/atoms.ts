@@ -11,7 +11,7 @@ import type {
   ContextStatistics,
   Tag,
   CTDPSettings 
-} from '../../types/ctdp'
+} from '../../../../types/ctdp'
 
 // ============= 核心状态 =============
 
@@ -109,6 +109,22 @@ export const todayFocusTimeAtom = atom((get) => {
 export const hasActiveSessionAtom = atom((get) => {
   const session = get(activeSessionAtom)
   return session !== null
+})
+
+/**
+ * 是否有活跃预约（派生状态）
+ */
+export const hasActiveScheduleAtom = atom((get) => {
+  const schedule = get(scheduleStateAtom)
+  return schedule !== null && schedule.isActive
+})
+
+/**
+ * 当前预约的contextId（派生状态）
+ */
+export const currentScheduleContextIdAtom = atom((get) => {
+  const schedule = get(scheduleStateAtom)
+  return schedule?.contextId || null
 })
 
 // ============= UI状态 =============
