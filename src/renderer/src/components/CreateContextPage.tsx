@@ -41,7 +41,7 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
   const [defaultDuration, setDefaultDuration] = useState(45);
   const [rules, setRules] = useState('');
   const [triggerAction, setTriggerAction] = useState('');
-  const [selectedPresetTime, setSelectedPresetTime] = useState('15分钟');
+  const [selectedPresetTime, setSelectedPresetTime] = useState(15);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 如果是编辑模式，加载现有配置
@@ -76,7 +76,7 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
               setTriggerAction(rulesData.triggerAction);
             }
             if (rulesData.presetTime) {
-              setSelectedPresetTime(rulesData.presetTime);
+              setSelectedPresetTime(typeof rulesData.presetTime === 'number' ? rulesData.presetTime : 15);
             }
           } catch (error) {
             console.error('解析规则数据失败:', error);
@@ -159,7 +159,7 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
   const IconComponent = getIconComponent(selectedIcon);
   const colorHex = getColorHex(selectedColor);
 
-  const presetTimes = PRESET_TIMES.map(time => time.label);
+  const presetTimes = PRESET_TIMES;
 
   return (
     <div 
@@ -469,19 +469,19 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
                   <div className="flex space-x-2 mt-2">
                     {presetTimes.map(time => (
                       <button 
-                        key={time} 
-                        onClick={() => setSelectedPresetTime(time)}
+                        key={time.value} 
+                        onClick={() => setSelectedPresetTime(time.value)}
                         className="px-4 py-2 rounded-md transition font-medium"
                         style={{
-                          backgroundColor: selectedPresetTime === time 
+                          backgroundColor: selectedPresetTime === time.value 
                             ? '#6366F1' 
                             : `${themeVars.backgroundSecondary}50`,
-                          color: selectedPresetTime === time 
+                          color: selectedPresetTime === time.value 
                             ? 'white' 
                             : themeVars.textPrimary
                         }}
                       >
-                        {time}
+                        {time.label}
                       </button>
                     ))}
                   </div>

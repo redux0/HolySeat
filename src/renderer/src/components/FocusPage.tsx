@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAtomValue } from 'jotai';
 import { useThemeVariables, useThemeTransition } from '../hooks/useTheme';
 import { useCTDPActions } from '../features/ctdp/hooks';
-import { activeSessionAtom } from '../features/ctdp/atoms';
+import { activeSessionAtom, contextsWithChainsAtom } from '../features/ctdp/atoms';
 import { 
   Link2, 
   Search, 
@@ -25,8 +25,36 @@ const ExitConfirmationModal: React.FC<{
   onAddRule: () => void;
   chainCount: number;
   existingRules: string[];
-}> = ({ onStay, onBreakChain, onAddRule, chainCount, existingRules }) => {
+  isEditingRules: boolean;
+  onToggleEditRules: () => void;
+  editableRules: string[];
+  onRuleChange: (index: number, value: string) => void;
+  onAddNewRule: () => void;
+  onRemoveRule: (index: number) => void;
+  onSaveRules: () => void;
+}> = ({ 
+  onStay, 
+  onBreakChain, 
+  onAddRule, 
+  chainCount, 
+  existingRules, 
+  isEditingRules,
+  onToggleEditRules,
+  editableRules,
+  onRuleChange,
+  onAddNewRule,
+  onRemoveRule,
+  onSaveRules
+}) => {
   const themeVars = useThemeVariables();
+
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === 'Enter') {
+      onSaveRules();
+    } else if (e.key === 'Escape') {
+      onToggleEditRules();
+    }
+  };
 
   return (
     <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-40 flex items-center justify-center p-4">
@@ -87,20 +115,85 @@ const ExitConfirmationModal: React.FC<{
           className="px-6 pb-6 border-t pt-4"
           style={{ borderColor: `${themeVars.borderPrimary}80` }}
         >
-          <h3 
-            className="text-sm font-semibold flex items-center space-x-2"
-            style={{ color: themeVars.textSecondary }}
-          >
-            <ShieldCheck size={16} />
-            <span>已有的例外规则</span>
-          </h3>
-          <ul className="list-disc list-inside text-xs mt-2 space-y-1" style={{ color: themeVars.textSecondary }}>
-            {existingRules.length > 0 ? (
-              existingRules.map(rule => <li key={rule}>{rule}</li>)
-            ) : (
-              <li>暂无例外规则</li>
-            )}
-          </ul>
+          <div className="flex items-center justify-between mb-2">
+            <h3 
+              className="text-sm font-semibold flex items-center space-x-2"
+              style={{ color: themeVars.textSecondary }}
+            >
+              <ShieldCheck size={16} />
+              <span>已有的例外规则</span>
+            </h3>
+            <button
+              onClick={onToggleEditRules}
+              className="text-xs px-2 py-1 rounded border hover:opacity-75 transition-opacity"
+              style={{
+                color: themeVars.textSecondary,
+                borderColor: themeVars.borderPrimary,
+                backgroundColor: `${themeVars.backgroundSecondary}40`
+              }}
+            >
+              {isEditingRules ? '取消编辑' : '编辑规则'}
+            </button>
+          </div>
+          
+          {isEditingRules ? (
+            <div className="space-y-2">
+              {editableRules.map((rule, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={rule}
+                    onChange={(e) => onRuleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, index)}
+                    className="flex-1 text-xs px-2 py-1 border rounded bg-transparent outline-none"
+                    style={{
+                      color: themeVars.textPrimary,
+                      borderColor: themeVars.borderPrimary,
+                      backgroundColor: `${themeVars.backgroundSecondary}40`
+                    }}
+                  />
+                  <button
+                    onClick={() => onRemoveRule(index)}
+                    className="text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+              <div className="flex space-x-2">
+                <button
+                  onClick={onAddNewRule}
+                  className="text-xs px-2 py-1 border rounded hover:opacity-75 transition-opacity"
+                  style={{
+                    color: themeVars.accentPrimary,
+                    borderColor: themeVars.accentPrimary,
+                    backgroundColor: `${themeVars.accentPrimary}10`
+                  }}
+                >
+                  + 添加新规则
+                </button>
+                <button
+                  onClick={onSaveRules}
+                  className="text-xs px-2 py-1 border rounded hover:opacity-75 transition-opacity"
+                  style={{
+                    color: '#10B981',
+                    borderColor: '#10B981',
+                    backgroundColor: '#10B98110'
+                  }}
+                >
+                  保存
+                </button>
+              </div>
+            </div>
+          ) : (
+            <ul className="list-disc list-inside text-xs mt-2 space-y-1" style={{ color: themeVars.textSecondary }}>
+              {existingRules.length > 0 ? (
+                existingRules.map((rule, index) => <li key={index}>{rule}</li>)
+              ) : (
+                <li>暂无例外规则</li>
+              )}
+            </ul>
+          )}
         </div>
       </div>
     </div>
@@ -163,8 +256,9 @@ const CommandPalette: React.FC<{
 const FocusPage: React.FC<FocusPageProps> = ({ onExit }) => {
   const themeVars = useThemeVariables();
   const transition = useThemeTransition();
-  const { completeSession, breakSession } = useCTDPActions();
+  const { completeSession, breakSession, updateTaskTitle, updateExceptionRules } = useCTDPActions();
   const activeSession = useAtomValue(activeSessionAtom);
+  const contexts = useAtomValue(contextsWithChainsAtom);
   
   // 如果没有活跃会话，不渲染专注页面
   if (!activeSession) {
@@ -172,17 +266,31 @@ const FocusPage: React.FC<FocusPageProps> = ({ onExit }) => {
     return null;
   }
 
-  const [timeLeft, setTimeLeft] = useState(
-    activeSession.expectedEndTime 
-      ? Math.max(0, Math.floor((activeSession.expectedEndTime.getTime() - Date.now()) / 1000))
-      : 45 * 60 // 默认45分钟
-  );
+  // 计算倒计时 - 基于真实的预期结束时间
+  const calculateTimeLeft = () => {
+    if (!activeSession.expectedEndTime) {
+      // 如果没有预期结束时间，默认60分钟
+      return 60 * 60;
+    }
+    
+    const now = new Date();
+    const endTime = new Date(activeSession.expectedEndTime);
+    const diffSeconds = Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
+    return diffSeconds;
+  };
+
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [taskTitle, setTaskTitle] = useState(activeSession.taskTitle || '请输入本次任务项');
+  const [isEditingRules, setIsEditingRules] = useState(false);
+  const [editableRules, setEditableRules] = useState<string[]>([]);
   
+  // 计算总时长和进度 - 基于真实的会话时间
   const totalDuration = activeSession.expectedEndTime 
-    ? Math.floor((activeSession.expectedEndTime.getTime() - activeSession.startTime.getTime()) / 1000)
-    : 45 * 60;
+    ? Math.floor((new Date(activeSession.expectedEndTime).getTime() - new Date(activeSession.startTime).getTime()) / 1000)
+    : 60 * 60; // 默认60分钟
   const progressPercentage = Math.max(0, (timeLeft / totalDuration) * 100);
 
   // 倒计时逻辑
@@ -214,11 +322,11 @@ const FocusPage: React.FC<FocusPageProps> = ({ onExit }) => {
       await completeSession({
         chainId: activeSession.chainId,
         duration,
-        title: activeSession.taskTitle,
+        title: taskTitle !== '请输入本次任务项' ? taskTitle : undefined,
         tags: activeSession.tags || []
       });
       
-      toast.success(`专注完成！链长度增加至 #${(activeSession.chainCount || 0) + 1}`);
+      toast.success(`专注完成！链长度增加至 #${(activeSession.chainCounter || 0) + 1}`);
       onExit();
     } catch (error) {
       console.error('完成任务失败:', error);
@@ -249,6 +357,77 @@ const FocusPage: React.FC<FocusPageProps> = ({ onExit }) => {
     setIsExitModalOpen(false);
   };
 
+  // 处理任务标题编辑
+  const handleTitleBlur = async () => {
+    setIsEditingTitle(false);
+    if (taskTitle !== (activeSession.taskTitle || '请输入本次任务项')) {
+      try {
+        await updateTaskTitle(activeSession.chainId, taskTitle);
+        toast.success('任务标题已更新');
+      } catch (error) {
+        console.error('更新任务标题失败:', error);
+        toast.error('更新任务标题失败');
+        // 恢复原标题
+        setTaskTitle(activeSession.taskTitle || '请输入本次任务项');
+      }
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    } else if (e.key === 'Escape') {
+      setTaskTitle(activeSession.taskTitle || '请输入本次任务项');
+      setIsEditingTitle(false);
+    }
+  };
+
+  // 获取已有的例外规则
+  const getExistingRules = (): string[] => {
+    const currentContext = contexts?.find(c => c.id === activeSession.contextId);
+    if (currentContext?.rules) {
+      const rules = currentContext.rules as any;
+      return rules.items || [];
+    }
+    return [];
+  };
+
+  // 处理规则编辑
+  const handleToggleEditRules = () => {
+    if (!isEditingRules) {
+      // 开始编辑，初始化可编辑规则
+      setEditableRules([...getExistingRules()]);
+    }
+    setIsEditingRules(!isEditingRules);
+  };
+
+  const handleRuleChange = (index: number, value: string) => {
+    const newRules = [...editableRules];
+    newRules[index] = value;
+    setEditableRules(newRules);
+  };
+
+  const handleAddNewRule = () => {
+    setEditableRules([...editableRules, '']);
+  };
+
+  const handleRemoveRule = (index: number) => {
+    const newRules = editableRules.filter((_, i) => i !== index);
+    setEditableRules(newRules);
+  };
+
+  const handleSaveRules = async () => {
+    try {
+      const filteredRules = editableRules.filter(rule => rule.trim() !== '');
+      await updateExceptionRules(activeSession.contextId, filteredRules);
+      setIsEditingRules(false);
+      toast.success('例外规则已更新');
+    } catch (error) {
+      console.error('更新例外规则失败:', error);
+      toast.error('更新例外规则失败');
+    }
+  };
+
   // 键盘快捷键处理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -265,12 +444,6 @@ const FocusPage: React.FC<FocusPageProps> = ({ onExit }) => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  // 模拟的已有规则（从activeSession或设置中获取）
-  const existingRules = [
-    "允许因紧急电话中断",
-    "允许因喝水/上厕所暂停"
-  ];
 
   return (
     <div 
@@ -313,9 +486,31 @@ const FocusPage: React.FC<FocusPageProps> = ({ onExit }) => {
           <Link2 size={20} />
           <span className="text-xl font-semibold">{activeSession.contextName}</span>
         </div>
-        <p className="text-lg mt-1" style={{ color: themeVars.textSecondary }}>
-          {activeSession.taskTitle || '专注任务进行中'}
-        </p>
+        
+        {/* 可编辑的任务标题 */}
+        {isEditingTitle ? (
+          <input
+            type="text"
+            value={taskTitle}
+            onChange={(e) => setTaskTitle(e.target.value)}
+            onBlur={handleTitleBlur}
+            onKeyDown={handleTitleKeyDown}
+            autoFocus
+            className="text-lg mt-1 bg-transparent border-none outline-none text-center w-full max-w-md"
+            style={{ 
+              color: themeVars.textSecondary,
+              borderBottom: `1px solid ${themeVars.borderPrimary}`
+            }}
+          />
+        ) : (
+          <p 
+            className="text-lg mt-1 cursor-pointer hover:opacity-75 transition-opacity"
+            style={{ color: themeVars.textSecondary }}
+            onClick={() => setIsEditingTitle(true)}
+          >
+            {taskTitle}
+          </p>
+        )}
         
         {/* 计时器和进度条 */}
         <div className="w-full my-8">
@@ -369,7 +564,14 @@ const FocusPage: React.FC<FocusPageProps> = ({ onExit }) => {
           onBreakChain={handleBreakChain}
           onAddRule={handleAddRule}
           chainCount={activeSession.chainCounter || 0}
-          existingRules={existingRules}
+          existingRules={getExistingRules()}
+          isEditingRules={isEditingRules}
+          onToggleEditRules={handleToggleEditRules}
+          editableRules={editableRules}
+          onRuleChange={handleRuleChange}
+          onAddNewRule={handleAddNewRule}
+          onRemoveRule={handleRemoveRule}
+          onSaveRules={handleSaveRules}
         />
       )}
       

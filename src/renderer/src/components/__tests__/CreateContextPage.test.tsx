@@ -118,7 +118,7 @@ describe('CreateContextPage', () => {
             items: [],
             defaultDuration: 45,
             triggerAction: undefined,
-            presetTime: '15分钟'
+            presetTime: 15
           },
           environment: {
             strictMode: true

@@ -442,6 +442,89 @@ export class ChainService {
   }
 
   /**
+   * 更新当前任务标题
+   */
+  async updateTaskTitle(chainId: string, title: string): Promise<void> {
+    try {
+      // 查找当前链的最新任务日志
+      const latestLog = await this.prisma.cTDPLog.findFirst({
+        where: {
+          chainId,
+          title: { not: null }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+
+      if (latestLog) {
+        // 更新最新日志的标题
+        await this.prisma.cTDPLog.update({
+          where: { id: latestLog.id },
+          data: { 
+            title,
+            metadata: {
+              ...latestLog.metadata as any,
+              titleUpdatedAt: new Date().toISOString()
+            }
+          }
+        })
+      } else {
+        // 如果没有任务日志，创建一个新的任务开始日志
+        await this.prisma.cTDPLog.create({
+          data: {
+            chainId,
+            type: LogType.SUCCESS,
+            title,
+            message: '任务标题已设置',
+            metadata: {
+              status: 'in_progress',
+              startTime: new Date().toISOString()
+            }
+          }
+        })
+      }
+    } catch (error) {
+      console.error('更新任务标题失败:', error)
+      throw new Error('Failed to update task title')
+    }
+  }
+
+  /**
+   * 更新情境的例外规则
+   */
+  async updateExceptionRules(contextId: string, exceptionRules: string[]): Promise<void> {
+    try {
+      // 获取当前情境
+      const context = await this.prisma.sacredContext.findUnique({
+        where: { id: contextId }
+      })
+
+      if (!context) {
+        throw new Error('Context not found')
+      }
+
+      // 更新规则
+      const currentRules = context.rules as any || {}
+      const updatedRules = {
+        ...currentRules,
+        items: exceptionRules
+      }
+
+      await this.prisma.sacredContext.update({
+        where: { id: contextId },
+        data: { 
+          rules: updatedRules,
+          updatedAt: new Date()
+        }
+      })
+
+      console.log('例外规则已更新:', { contextId, items: exceptionRules })
+    } catch (error) {
+      console.error('更新例外规则失败:', error)
+      throw new Error('Failed to update exception rules')
+    }
+  }
+
+  /**
    * 私有方法：更新链的平均时长
    */
   private async updateChainAverageDuration(chainId: string): Promise<void> {

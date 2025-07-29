@@ -37,7 +37,7 @@ describe('useCTDPActions - 情境链管理', () => {
           items: ['关闭所有社交软件', '手机静音并反面放置'],
           defaultDuration: 45,
           triggerAction: '打响指',
-          presetTime: '15分钟'
+          presetTime: 15
         },
         environment: {
           strictMode: true
@@ -103,7 +103,7 @@ describe('useCTDPActions - 情境链管理', () => {
           items: ['关闭娱乐应用', '准备学习材料'],
           defaultDuration: 60,
           triggerAction: '深呼吸三次',
-          presetTime: '30分钟'
+          presetTime: 30
         },
         environment: {
           strictMode: false
@@ -144,7 +144,7 @@ describe('useCTDPActions - 情境链管理', () => {
           items: ['关闭所有通知', '使用番茄工作法', '保持桌面整洁'],
           defaultDuration: 50,
           triggerAction: '整理桌面',
-          presetTime: '10分钟'
+          presetTime: 10
         }
       }
       

@@ -16,16 +16,17 @@ async function main() {
       icon: '🧠',
       color: '#3B82F6',
       rules: {
-        minDuration: 3600, // 最少1小时
-        allowBreaks: false,
-        distractionBlocking: true
+        items: [
+          '关闭所有社交软件',
+          '手机静音并反面放置',
+          '专注于单一任务'
+        ],
+        defaultDuration: 60,
+        triggerAction: '深呼吸三次',
+        presetTime: 15
       },
       environment: {
-        apps: {
-          whitelist: ['VSCode', 'Chrome', 'Terminal'],
-          blacklist: ['WeChat', 'QQ', '抖音', '小红书']
-        },
-        notifications: false
+        strictMode: true
       }
     }
   })
@@ -40,16 +41,17 @@ async function main() {
       icon: '📚',
       color: '#10B981',
       rules: {
-        minDuration: 1800, // 最少30分钟
-        allowBreaks: true,
-        breakDuration: 300 // 5分钟休息
+        items: [
+          '准备好学习材料',
+          '找到安静的学习环境',
+          '做好学习笔记'
+        ],
+        defaultDuration: 45,
+        triggerAction: '整理学习桌面',
+        presetTime: 10
       },
       environment: {
-        apps: {
-          whitelist: ['Browser', 'Notion', 'Anki', 'PDF Reader'],
-          blacklist: ['Games', 'Social Media']
-        },
-        notifications: false
+        strictMode: false
       }
     }
   })
@@ -64,16 +66,17 @@ async function main() {
       icon: '💪',
       color: '#F59E0B',
       rules: {
-        minDuration: 1800, // 最少30分钟
-        allowBreaks: true,
-        requireWarmup: true
+        items: [
+          '做好热身运动',
+          '准备充足的水分',
+          '注意安全，量力而行'
+        ],
+        defaultDuration: 30,
+        triggerAction: '换运动服',
+        presetTime: 5
       },
       environment: {
-        apps: {
-          whitelist: ['健身App', '音乐播放器'],
-          blacklist: ['社交软件', '视频软件']
-        },
-        notifications: true // 允许健身提醒
+        strictMode: false
       }
     }
   })

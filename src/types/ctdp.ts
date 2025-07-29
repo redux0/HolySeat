@@ -33,12 +33,10 @@ export type {
 
 /** 神圣情境的规则配置 */
 export interface SacredContextRules {
-  minDuration: number;           // 最少专注时长（秒）
-  maxDuration?: number;          // 最大专注时长（秒）
-  allowBreaks: boolean;          // 是否允许中途休息
-  breakDuration?: number;        // 休息时长（秒）
-  requireWarmup?: boolean;       // 是否需要热身
-  distractionBlocking?: boolean; // 是否启用干扰屏蔽
+  items?: string[];              // 行为准则列表
+  defaultDuration?: number;      // 默认专注时长（分钟）
+  triggerAction?: string;        // 预约信号（触发动作）
+  presetTime?: number;           // 预约时长（分钟）
 }
 
 /** 神圣情境的环境配置 */

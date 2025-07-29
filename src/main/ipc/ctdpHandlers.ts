@@ -56,6 +56,26 @@ export function registerCTDPHandlers() {
     }
   })
 
+  // 更新任务标题
+  ipcMain.handle('ctdp:updateTaskTitle', async (_, chainId: string, title: string) => {
+    try {
+      return await chainService.updateTaskTitle(chainId, title)
+    } catch (error) {
+      console.error('IPC Error - updateTaskTitle:', error)
+      throw error
+    }
+  })
+
+  // 更新例外规则
+  ipcMain.handle('ctdp:updateExceptionRules', async (_, contextId: string, exceptionRules: string[]) => {
+    try {
+      return await chainService.updateExceptionRules(contextId, exceptionRules)
+    } catch (error) {
+      console.error('IPC Error - updateExceptionRules:', error)
+      throw error
+    }
+  })
+
   // 归档链
   ipcMain.handle('ctdp:archiveChain', async (_, chainId: string) => {
     try {
@@ -258,6 +278,8 @@ export function unregisterCTDPHandlers() {
     'ctdp:startOrContinueChain',
     'ctdp:incrementChain',
     'ctdp:breakChain',
+    'ctdp:updateTaskTitle',
+    'ctdp:updateExceptionRules',
     'ctdp:archiveChain',
     'ctdp:scheduleAuxiliaryTask',
     'ctdp:getUpcomingAuxiliaryTasks',

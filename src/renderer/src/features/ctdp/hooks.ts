@@ -229,6 +229,43 @@ export function useCTDPActions() {
     }
   }
 
+  /**
+   * 更新任务标题
+   */
+  const updateTaskTitle = async (chainId: string, title: string) => {
+    if (!ipcRenderer) return null
+
+    try {
+      const result = await ipcRenderer.invoke('ctdp:updateTaskTitle', chainId, title)
+      console.log('✏️ 更新任务标题:', { chainId, title })
+      
+      return result
+    } catch (err) {
+      console.error('更新任务标题失败:', err)
+      throw err
+    }
+  }
+
+  /**
+   * 更新例外规则
+   */
+  const updateExceptionRules = async (contextId: string, exceptionRules: string[]) => {
+    if (!ipcRenderer) return null
+
+    try {
+      const result = await ipcRenderer.invoke('ctdp:updateExceptionRules', contextId, exceptionRules)
+      console.log('📝 更新例外规则:', { contextId, exceptionRules })
+      
+      // 重新加载情境数据以更新本地状态
+      await loadContextsWithChains()
+      
+      return result
+    } catch (err) {
+      console.error('更新例外规则失败:', err)
+      throw err
+    }
+  }
+
   // ============= 辅助链管理 =============
 
   /**
@@ -426,6 +463,8 @@ export function useCTDPActions() {
     startSession,
     completeSession,
     breakSession,
+    updateTaskTitle,
+    updateExceptionRules,
     
     // 辅助链管理
     scheduleTask,

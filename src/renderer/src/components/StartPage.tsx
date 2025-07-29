@@ -8,6 +8,7 @@ import { contextsWithChainsAtom, contextsLoadingAtom, contextsErrorAtom } from '
 import CreateContextPage from './CreateContextPage';
 import ContextManagementPage from './ContextManagementPage';
 import { getIconComponent, IconNames, ICON_MAP } from '../constants';
+import { SacredContextRules } from '../../../types/ctdp';
 
 const StartPage: React.FC = () => {
   const themeVars = useThemeVariables();
@@ -33,9 +34,15 @@ const StartPage: React.FC = () => {
   const handleStartSession = async (contextId: string, contextName: string) => {
     try {
       console.log(`🎯 启动情境: ${contextName} (${contextId})`);
+      
+      // 找到对应的情境以获取默认时长
+      const context = contexts?.find(c => c.id === contextId);
+      const rules = context?.rules as SacredContextRules;
+      const defaultDuration = (rules?.defaultDuration || 45) * 60; // 从规则中读取defaultDuration（分钟），转换为秒
+      
       await startSession(contextId, {
-        title: `${contextName}专注会话`,
-        expectedDuration: 3600 // 默认1小时
+        title: '请输入本次任务项',
+        expectedDuration: defaultDuration
       });
     } catch (err) {
       console.error('启动会话失败:', err);

@@ -11,14 +11,15 @@ const FocusPageDemo: React.FC = () => {
 
   // 模拟启动专注会话
   const startDemoSession = () => {
+    const now = new Date();
     const mockSession: ActiveSession = {
       chainId: 'demo-chain-123',
       contextId: 'demo-context-456',
       contextName: '深度学习研究',
       chainCounter: 7,
-      taskTitle: '完成神经网络论文阅读',
-      startTime: new Date(),
-      expectedEndTime: new Date(Date.now() + 45 * 60 * 1000), // 45分钟后
+      taskTitle: '请输入本次任务项',
+      startTime: now,
+      expectedEndTime: new Date(now.getTime() + 45 * 60 * 1000), // 45分钟后
       tags: [
         { id: '1', name: '研究', color: '#3B82F6', createdAt: new Date(), updatedAt: new Date() },
         { id: '2', name: '论文', color: '#10B981', createdAt: new Date(), updatedAt: new Date() },

@@ -16,3 +16,6 @@ docs/
 
 # DB
 prisma/dev.db
+
+# Output directories
+out/
