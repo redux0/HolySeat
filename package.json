@@ -5,7 +5,23 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "preview": "electron-vite preview"
+    "preview": "electron-vite preview",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "db:init": "node prisma/init.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
+    "build:win": "npm run build && electron-builder --win",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:linux": "npm run build && electron-builder --linux",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win --publish=never",
+    "dist:mac": "npm run build && electron-builder --mac --publish=never",
+    "dist:linux": "npm run build && electron-builder --linux --publish=never"
   },
   "repository": {
     "type": "git",
@@ -21,6 +37,7 @@
   "description": "",
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
+    "@prisma/client": "^6.12.0",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.7",
@@ -30,6 +47,7 @@
     "lucide-react": "^0.526.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7"
   },
@@ -41,11 +59,71 @@
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.21",
     "electron": "^37.2.4",
+    "electron-builder": "^26.0.12",
     "electron-vite": "^4.0.0",
     "postcss": "^8.5.6",
     "prisma": "^6.12.0",
     "tailwindcss": "^4.1.11",
+    "tsx": "^4.7.0",
     "tw-animate-css": "^1.3.6",
     "typescript": "^5.8.3"
+  },
+  "build": {
+    "appId": "com.holyseat.app",
+    "productName": "HolySeat",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "prisma/schema.prisma",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "prisma/dev.db",
+        "to": "prisma/dev.db",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": {
+        "target": "dmg",
+        "arch": [
+          "x64",
+          "arm64"
+        ]
+      }
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }
