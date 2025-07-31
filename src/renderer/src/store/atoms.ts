@@ -47,3 +47,6 @@ export const userActivityInfoAtom = atom<UserActivityInfo>({
   status: null 
 });
 
+// 导出计时器管理相关的 atoms
+export * from './timerManager';
+

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useAtom } from 'jotai';
+import { useAtomValue } from 'jotai';
 import { Clock, X } from 'lucide-react';
 import { useThemeVariables } from '../hooks/useTheme';
-import { scheduleStateAtom } from '../features/ctdp/atoms';
+import { userActivityStateAtom, userActivityInfoAtom } from '../store/atoms';
+import type { ScheduleState } from '../features/ctdp/atoms';
 import CancelScheduleModal from './CancelScheduleModal';
 
 interface CountdownBarProps {
@@ -12,28 +13,14 @@ interface CountdownBarProps {
 
 const CountdownBar: React.FC<CountdownBarProps> = ({ onComplete, onCancel }) => {
   const themeVars = useThemeVariables();
-  const [scheduleState, setScheduleState] = useAtom(scheduleStateAtom);
+  const userActivityState = useAtomValue(userActivityStateAtom);
+  const userActivityInfo = useAtomValue(userActivityInfoAtom);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
-  useEffect(() => {
-    if (!scheduleState?.isActive) return;
-
-    const interval = setInterval(() => {
-      setScheduleState(prev => {
-        if (!prev || prev.remainingTime <= 1) {
-          // 倒计时结束
-          onComplete();
-          return null;
-        }
-        return {
-          ...prev,
-          remainingTime: prev.remainingTime - 1
-        };
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [scheduleState?.isActive, onComplete, setScheduleState]);
+  // 从全局状态获取预约信息
+  const scheduleState = userActivityState === 'SCHEDULED' 
+    ? userActivityInfo.status as ScheduleState 
+    : null;
 
   if (!scheduleState?.isActive) return null;
 

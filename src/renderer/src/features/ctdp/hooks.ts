@@ -17,6 +17,11 @@ import {
   scheduleStateAtom,
   scheduleModalAtom
 } from './atoms'
+import { 
+  setScheduleTimerAtom, 
+  setFocusTimerAtom, 
+  clearAllTimersAtom 
+} from '../../store/timerManager'
 
 // IPC调用封装
 const ipcRenderer = window.electron?.ipcRenderer
@@ -32,6 +37,11 @@ export function useCTDPActions() {
   const setSettings = useSetAtom(settingsAtom)
   const [scheduleState, setScheduleState] = useAtom(scheduleStateAtom)
   const setScheduleModal = useSetAtom(scheduleModalAtom)
+  
+  // 全局计时器管理
+  const setScheduleTimer = useSetAtom(setScheduleTimerAtom)
+  const setFocusTimer = useSetAtom(setFocusTimerAtom)
+  const clearAllTimers = useSetAtom(clearAllTimersAtom)
 
   // ============= 情境管理 =============
 
@@ -177,6 +187,9 @@ export function useCTDPActions() {
           tags: [] // 从taskInfo.tags获取完整Tag对象
         }
         setActiveSession(session)
+        
+        // 启动全局专注计时器
+        setFocusTimer(session)
       }
       
       // 重新加载情境列表以更新链状态
@@ -208,8 +221,9 @@ export function useCTDPActions() {
       })
       console.log('✅ 完成会话:', result)
       
-      // 清除活跃会话
+      // 清除活跃会话和全局计时器
       setActiveSession(null)
+      clearAllTimers()
       
       // 重新加载数据
       await loadContextsWithChains()
@@ -239,8 +253,9 @@ export function useCTDPActions() {
       })
       console.log('💔 断裂链:', result)
       
-      // 清除活跃会话
+      // 清除活跃会话和全局计时器
       setActiveSession(null)
+      clearAllTimers()
       
       // 重新加载数据
       await loadContextsWithChains()
@@ -463,21 +478,36 @@ export function useCTDPActions() {
    */
   const startScheduleCountdown = (contextId: string, contextName: string, taskTitle: string, delayMinutes: number) => {
     const totalTime = delayMinutes * 60; // 转换为秒
-    setScheduleState({
+    const scheduleState = {
       isActive: true,
       contextId,
       contextName,
       taskTitle,
       remainingTime: totalTime,
       totalTime
-    });
+    };
+    
+    // 设置本地状态（保持向后兼容）
+    setScheduleState(scheduleState);
+    
+    // 启动全局预约计时器，传递完成回调
+    const onComplete = () => {
+      // 预约完成时自动启动专注会话
+      startSession(contextId, { title: taskTitle });
+    };
+    
+    setScheduleTimer({ scheduleState, onComplete });
   };
 
   /**
    * 取消预约
    */
   const cancelSchedule = () => {
+    // 清除本地状态
     setScheduleState(null);
+    
+    // 清除全局计时器
+    clearAllTimers();
   };
 
   /**

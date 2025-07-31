@@ -3,6 +3,8 @@ import { useAtomValue } from 'jotai';
 import { useThemeVariables, useThemeTransition } from '../hooks/useTheme';
 import { useCTDPActions } from '../features/ctdp/hooks';
 import { activeSessionAtom, contextsWithChainsAtom } from '../features/ctdp/atoms';
+import { userActivityStateAtom, userActivityInfoAtom } from '../store/atoms';
+import type { ActiveSession } from '../../../types/ctdp';
 import { 
   Link2, 
   Search, 
@@ -259,12 +261,19 @@ const FocusPage: React.FC<FocusPageProps> = ({ onExit }) => {
   const { completeSession, breakSession, updateTaskTitle, updateExceptionRules } = useCTDPActions();
   const activeSession = useAtomValue(activeSessionAtom);
   const contexts = useAtomValue(contextsWithChainsAtom);
+  const userActivityState = useAtomValue(userActivityStateAtom);
+  const userActivityInfo = useAtomValue(userActivityInfoAtom);
   
   // 如果没有活跃会话，不渲染专注页面
   if (!activeSession) {
     onExit();
     return null;
   }
+
+  // 从全局状态获取专注会话信息
+  const focusSession = userActivityState === 'FOCUSING' 
+    ? userActivityInfo.status as ActiveSession 
+    : null;
 
   // 计算倒计时 - 基于真实的预期结束时间
   const calculateTimeLeft = () => {
@@ -293,20 +302,25 @@ const FocusPage: React.FC<FocusPageProps> = ({ onExit }) => {
     : 60 * 60; // 默认60分钟
   const progressPercentage = Math.max(0, (timeLeft / totalDuration) * 100);
 
-  // 倒计时逻辑
+  // 监听全局专注状态变化
   useEffect(() => {
-    if (timeLeft <= 0) {
-      // 时间到了，自动完成任务
+    if (userActivityState === 'IDLE' && focusSession) {
+      // 专注时间到，自动完成任务
       handleCompleteTask();
-      return;
     }
+  }, [userActivityState, focusSession]);
+
+  // 实时更新剩余时间（基于当前时间计算）
+  useEffect(() => {
+    const updateTimeLeft = () => {
+      setTimeLeft(calculateTimeLeft());
+    };
     
-    const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
-    }, 1000);
+    // 每秒更新一次时间显示
+    const timer = setInterval(updateTimeLeft, 1000);
     
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [activeSession.expectedEndTime]);
 
   // 格式化时间显示
   const formatTime = (seconds: number): string => {
@@ -323,7 +337,7 @@ const FocusPage: React.FC<FocusPageProps> = ({ onExit }) => {
         chainId: activeSession.chainId,
         duration,
         title: taskTitle !== '请输入本次任务项' ? taskTitle : undefined,
-        tags: activeSession.tags || []
+        tags: activeSession.tags?.map(tag => tag.name) || []
       });
       
       toast.success(`专注完成！链长度增加至 #${(activeSession.chainCounter || 0) + 1}`);
