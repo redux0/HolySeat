@@ -87,6 +87,16 @@ const CreateContextPage: React.FC<CreateContextPageProps> = ({ onBack, isEditing
         console.warn(`未找到ID为 ${contextId} 的情境`);
         toast.error('未找到要编辑的情境数据');
       }
+    } else if (!isEditing) {
+      // 如果是创建模式，重置所有状态
+      setContextName('');
+      setContextDescription('');
+      setSelectedIcon(AVAILABLE_ICONS[0].name);
+      setSelectedColor(AVAILABLE_COLORS[0].name);
+      setDefaultDuration(45);
+      setRules('');
+      setTriggerAction('');
+      setSelectedPresetTime(15);
     }
   }, [isEditing, contextId, contextsWithChains]);
 
