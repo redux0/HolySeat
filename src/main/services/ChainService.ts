@@ -146,6 +146,9 @@ export class ChainService {
             }
           }
         })
+
+        // 3. 为新创建的主链自动创建对应的辅助链（如果配置了默认设置）
+        await this.createDefaultAuxiliaryChain(contextId)
       }
 
       // 3. 如果提供了任务信息，创建任务开始日志
@@ -305,6 +308,120 @@ export class ChainService {
   }
 
   /**
+   * 为主链创建默认辅助链
+   */
+  private async createDefaultAuxiliaryChain(contextId: string): Promise<void> {
+    try {
+      // 获取情境的规则配置
+      const context = await this.prisma.sacredContext.findUnique({
+        where: { id: contextId },
+        select: { rules: true, name: true }
+      });
+
+      if (!context) {
+        console.warn('情境不存在，跳过创建默认辅助链');
+        return;
+      }
+
+      // 从规则中提取默认设置
+      let defaultDelayMinutes = 15;
+      let defaultTriggerAction = '打响指';
+      
+      if (context.rules && typeof context.rules === 'object') {
+        const rules = context.rules as any;
+        if (rules.presetTime) {
+          defaultDelayMinutes = rules.presetTime;
+        }
+        if (rules.triggerAction) {
+          defaultTriggerAction = rules.triggerAction;
+        }
+      }
+
+      // 检查是否已经有待处理的辅助链
+      const existingAuxChain = await this.prisma.auxiliaryChain.findFirst({
+        where: {
+          targetContextId: contextId,
+          status: AuxChainStatus.PENDING
+        }
+      });
+
+      // 如果没有现有的辅助链，创建一个默认的
+      if (!existingAuxChain) {
+        const deadline = new Date(Date.now() + defaultDelayMinutes * 60 * 1000);
+        
+        await this.prisma.auxiliaryChain.create({
+          data: {
+            targetContextId: contextId,
+            delayMinutes: defaultDelayMinutes,
+            deadline,
+            description: `${context.name || '未知情境'}的默认预约设置`,
+            reminder: true,
+            status: AuxChainStatus.PENDING
+          }
+        });
+
+        console.log(`✅ 为情境 ${context.name} 创建了默认辅助链`);
+      }
+    } catch (error) {
+      console.error('创建默认辅助链失败:', error);
+      // 不抛出错误，避免影响主链创建
+    }
+  }
+
+  /**
+   * 获取指定情境的最近辅助链信息（用于预约对话框默认值）
+   */
+  async getContextAuxiliaryInfo(contextId: string) {
+    try {
+      // 获取该情境最近一次的辅助链设置
+      const recentAuxChain = await this.prisma.auxiliaryChain.findFirst({
+        where: { targetContextId: contextId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          delayMinutes: true,
+          description: true,
+          reminder: true
+        }
+      });
+
+      // 获取情境的默认规则设置
+      const context = await this.prisma.sacredContext.findUnique({
+        where: { id: contextId },
+        select: { rules: true }
+      });
+
+      let defaultDelayMinutes = 15;
+      let defaultTriggerAction = '打响指';
+
+      // 从情境规则中提取默认值
+      if (context?.rules && typeof context.rules === 'object') {
+        const rules = context.rules as any;
+        if (rules.presetTime) {
+          defaultDelayMinutes = rules.presetTime;
+        }
+        if (rules.triggerAction) {
+          defaultTriggerAction = rules.triggerAction;
+        }
+      }
+
+      return {
+        delayMinutes: recentAuxChain?.delayMinutes ?? defaultDelayMinutes,
+        description: recentAuxChain?.description ?? '',
+        reminder: recentAuxChain?.reminder ?? true,
+        triggerAction: defaultTriggerAction
+      };
+    } catch (error) {
+      console.error('获取情境辅助链信息失败:', error);
+      return {
+        delayMinutes: 15,
+        description: '',
+        reminder: true,
+        triggerAction: '打响指'
+      };
+    }
+  }
+
+  /**
    * 创建辅助链（预约任务）
    */
   async scheduleAuxiliaryTask(
@@ -324,6 +441,46 @@ export class ChainService {
           status: AuxChainStatus.PENDING
         }
       })
+
+      // 为辅助链创建启动日志
+      const targetContext = await this.prisma.sacredContext.findUnique({
+        where: { id: request.targetContextId },
+        select: { name: true }
+      });
+
+      // 查找或创建该情境的活跃主链
+      let activeChain = await this.prisma.cTDPChain.findFirst({
+        where: {
+          contextId: request.targetContextId,
+          status: ChainStatus.ACTIVE
+        }
+      });
+
+      if (!activeChain) {
+        activeChain = await this.prisma.cTDPChain.create({
+          data: {
+            contextId: request.targetContextId,
+            counter: 0,
+            status: ChainStatus.ACTIVE
+          }
+        });
+      }
+
+      // 创建辅助链启动日志
+      await this.prisma.cTDPLog.create({
+        data: {
+          type: LogType.CREATED,
+          title: `预约启动: ${targetContext?.name || '未知情境'}`,
+          message: `创建预约任务，将在 ${delayMinutes} 分钟后启动。${request.description ? `描述: ${request.description}` : ''}`,
+          chainId: activeChain.id,
+          metadata: {
+            auxiliaryChainId: auxiliaryChain.id,
+            delayMinutes,
+            deadline: deadline.toISOString(),
+            description: request.description
+          }
+        }
+      });
 
       return auxiliaryChain.id
     } catch (error) {
@@ -354,26 +511,145 @@ export class ChainService {
   }
 
   /**
-   * 履行辅助链任务
+   * 完成辅助链（到期时自动触发）
    */
   async fulfillAuxiliaryTask(auxiliaryId: string): Promise<boolean> {
     try {
+      const auxiliaryChain = await this.prisma.auxiliaryChain.findUnique({
+        where: { id: auxiliaryId },
+        include: {
+          targetContext: { select: { name: true } }
+        }
+      });
+
+      if (!auxiliaryChain) {
+        console.error('辅助链不存在');
+        return false;
+      }
+
+      if (auxiliaryChain.status !== AuxChainStatus.PENDING) {
+        console.error('辅助链状态不正确');
+        return false;
+      }
+
+      // 更新辅助链状态
       await this.prisma.auxiliaryChain.update({
         where: { id: auxiliaryId },
-        data: {
+        data: { 
           status: AuxChainStatus.FULFILLED,
           fulfilledAt: new Date()
         }
-      })
-      return true
+      });
+
+      // 查找对应的主链
+      const activeChain = await this.prisma.cTDPChain.findFirst({
+        where: {
+          contextId: auxiliaryChain.targetContextId,
+          status: ChainStatus.ACTIVE
+        }
+      });
+
+      if (activeChain) {
+        // 创建辅助链完成日志
+        await this.prisma.cTDPLog.create({
+          data: {
+            type: LogType.SUCCESS,
+            title: `预约完成: ${auxiliaryChain.targetContext?.name || '未知情境'}`,
+            message: `预约任务已到期完成。${auxiliaryChain.description ? `描述: ${auxiliaryChain.description}` : ''}`,
+            chainId: activeChain.id,
+            metadata: {
+              auxiliaryChainId: auxiliaryId,
+              description: auxiliaryChain.description,
+              originalDelay: auxiliaryChain.delayMinutes
+            }
+          }
+        });
+
+        // 增加主链计数器（完成预约相当于完成一个任务）
+        await this.prisma.cTDPChain.update({
+          where: { id: activeChain.id },
+          data: { counter: activeChain.counter + 1 }
+        });
+      }
+
+      return true;
     } catch (error) {
-      console.error('履行辅助链失败:', error)
-      return false
+      console.error('履行辅助链失败:', error);
+      return false;
     }
   }
 
   /**
-   * 辅助链任务失败
+   * 取消辅助链（用户主动取消或其他原因）
+   */
+  async cancelAuxiliaryTask(auxiliaryId: string, reason?: string): Promise<boolean> {
+    try {
+      const auxiliaryChain = await this.prisma.auxiliaryChain.findUnique({
+        where: { id: auxiliaryId },
+        include: {
+          targetContext: { select: { name: true } }
+        }
+      });
+
+      if (!auxiliaryChain) {
+        console.error('辅助链不存在');
+        return false;
+      }
+
+      if (auxiliaryChain.status !== AuxChainStatus.PENDING) {
+        console.error('只能取消待处理的辅助链');
+        return false;
+      }
+
+      // 更新辅助链状态
+      await this.prisma.auxiliaryChain.update({
+        where: { id: auxiliaryId },
+        data: { 
+          status: AuxChainStatus.CANCELLED
+        }
+      });
+
+      // 查找对应的主链
+      const activeChain = await this.prisma.cTDPChain.findFirst({
+        where: {
+          contextId: auxiliaryChain.targetContextId,
+          status: ChainStatus.ACTIVE
+        }
+      });
+
+      if (activeChain) {
+        // 创建辅助链取消日志
+        await this.prisma.cTDPLog.create({
+          data: {
+            type: LogType.BROKEN,
+            title: `预约取消: ${auxiliaryChain.targetContext?.name || '未知情境'}`,
+            message: `预约任务已取消。${reason ? `原因: ${reason}` : ''}${auxiliaryChain.description ? ` 原描述: ${auxiliaryChain.description}` : ''}`,
+            chainId: activeChain.id,
+            metadata: {
+              auxiliaryChainId: auxiliaryId,
+              description: auxiliaryChain.description,
+              originalDelay: auxiliaryChain.delayMinutes,
+              cancelReason: reason
+            }
+          }
+        });
+
+        // 取消预约会中断主链
+        await this.breakChain(activeChain.id, { 
+          reason: `预约取消: ${reason || '用户取消'}`,
+          metadata: { auxiliaryChainId: auxiliaryId }
+        });
+      }
+
+      return true;
+    } catch (error) {
+      console.error('取消辅助链失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 辅助链任务失败（保留原有方法用于兼容）
    */
   async failAuxiliaryTask(auxiliaryId: string): Promise<boolean> {
     try {

@@ -22,6 +22,10 @@ import {
   setFocusTimerAtom, 
   clearAllTimersAtom 
 } from '../../store/timerManager'
+import { 
+  userActivityStateAtom, 
+  userActivityInfoAtom 
+} from '../../store/atoms'
 
 // IPC调用封装
 const ipcRenderer = window.electron?.ipcRenderer
@@ -42,6 +46,10 @@ export function useCTDPActions() {
   const setScheduleTimer = useSetAtom(setScheduleTimerAtom)
   const setFocusTimer = useSetAtom(setFocusTimerAtom)
   const clearAllTimers = useSetAtom(clearAllTimersAtom)
+  
+  // 全局用户活动状态管理
+  const [userActivityState, setUserActivityState] = useAtom(userActivityStateAtom)
+  const [userActivityInfo, setUserActivityInfo] = useAtom(userActivityInfoAtom)
 
   // ============= 情境管理 =============
 
@@ -188,6 +196,16 @@ export function useCTDPActions() {
         }
         setActiveSession(session)
         
+        // 清除所有计时器（包括预约计时器）
+        clearAllTimers()
+        
+        // 更新全局用户活动状态
+        setUserActivityState('FOCUSING')
+        setUserActivityInfo({ status: session })
+        
+        // 清除预约状态（如果有的话）
+        setScheduleState(null)
+        
         // 启动全局专注计时器
         setFocusTimer(session)
       }
@@ -225,6 +243,10 @@ export function useCTDPActions() {
       setActiveSession(null)
       clearAllTimers()
       
+      // 更新全局用户活动状态
+      setUserActivityState('IDLE')
+      setUserActivityInfo({ status: null })
+      
       // 重新加载数据
       await loadContextsWithChains()
       await loadStatistics()
@@ -256,6 +278,10 @@ export function useCTDPActions() {
       // 清除活跃会话和全局计时器
       setActiveSession(null)
       clearAllTimers()
+      
+      // 更新全局用户活动状态
+      setUserActivityState('IDLE')
+      setUserActivityInfo({ status: null })
       
       // 重新加载数据
       await loadContextsWithChains()
@@ -308,6 +334,22 @@ export function useCTDPActions() {
   // ============= 辅助链管理 =============
 
   /**
+   * 获取情境的辅助链信息（用于预约对话框默认值）
+   */
+  const getContextAuxiliaryInfo = async (contextId: string) => {
+    if (!ipcRenderer) return null
+
+    try {
+      const result = await ipcRenderer.invoke('ctdp:getContextAuxiliaryInfo', contextId)
+      console.log('📋 情境辅助链信息:', result)
+      return result
+    } catch (err) {
+      console.error('获取情境辅助链信息失败:', err)
+      return null
+    }
+  }
+
+  /**
    * 创建预约任务（辅助链）
    */
   const scheduleTask = async (request: {
@@ -325,6 +367,29 @@ export function useCTDPActions() {
     } catch (err) {
       console.error('创建预约失败:', err)
       throw err
+    }
+  }
+
+  /**
+   * 取消预约任务
+   */
+  const cancelScheduledTask = async (auxiliaryId: string, reason?: string) => {
+    if (!ipcRenderer) return false
+
+    try {
+      const result = await ipcRenderer.invoke('ctdp:cancelAuxiliaryTask', auxiliaryId, reason)
+      console.log('❌ 取消预约:', auxiliaryId, reason)
+      
+      // 取消后清理所有计时器
+      clearAllTimers()
+      
+      // 重新加载数据
+      await loadContextsWithChains()
+      
+      return result
+    } catch (err) {
+      console.error('取消预约失败:', err)
+      return false
     }
   }
 
@@ -476,38 +541,80 @@ export function useCTDPActions() {
   /**
    * 开始预约倒计时
    */
-  const startScheduleCountdown = (contextId: string, contextName: string, taskTitle: string, delayMinutes: number) => {
-    const totalTime = delayMinutes * 60; // 转换为秒
-    const scheduleState = {
-      isActive: true,
-      contextId,
-      contextName,
-      taskTitle,
-      remainingTime: totalTime,
-      totalTime
-    };
-    
-    // 设置本地状态（保持向后兼容）
-    setScheduleState(scheduleState);
-    
-    // 启动全局预约计时器，传递完成回调
-    const onComplete = () => {
-      // 预约完成时自动启动专注会话
-      startSession(contextId, { title: taskTitle });
-    };
-    
-    setScheduleTimer({ scheduleState, onComplete });
+  const startScheduleCountdown = async (contextId: string, contextName: string, taskTitle: string, delayMinutes: number) => {
+    try {
+      // 先创建辅助链
+      const auxiliaryId = await scheduleTask({
+        targetContextId: contextId,
+        delayMinutes,
+        description: taskTitle,
+        reminder: true
+      });
+
+      if (!auxiliaryId) {
+        throw new Error('创建预约失败');
+      }
+
+      const totalTime = delayMinutes * 60; // 转换为秒
+      const scheduleState = {
+        isActive: true,
+        contextId,
+        contextName,
+        taskTitle,
+        remainingTime: totalTime,
+        totalTime,
+        auxiliaryId
+      };
+      
+      // 设置本地状态（保持向后兼容）
+      setScheduleState(scheduleState);
+      
+      // 更新全局用户活动状态
+      setUserActivityState('SCHEDULED');
+      setUserActivityInfo({ status: scheduleState });
+      
+      // 启动全局预约计时器，传递完成回调
+      const onComplete = () => {
+        // 预约完成时自动启动专注会话
+        // 计时器管理器已经检查了状态，只有在SCHEDULED状态时才会调用此回调
+        console.log('⏰ 预约时间到达，自动启动专注会话');
+        startSession(contextId, { title: taskTitle });
+      };
+      
+      setScheduleTimer({ scheduleState, onComplete });
+    } catch (error) {
+      console.error('启动预约倒计时失败:', error);
+      throw error;
+    }
   };
 
   /**
    * 取消预约
    */
-  const cancelSchedule = () => {
-    // 清除本地状态
-    setScheduleState(null);
-    
-    // 清除全局计时器
-    clearAllTimers();
+  const cancelSchedule = async () => {
+    try {
+      // 如果有活跃的预约，取消对应的辅助链
+      if (scheduleState?.auxiliaryId) {
+        await cancelScheduledTask(scheduleState.auxiliaryId, '用户主动取消');
+      }
+      
+      // 清除本地状态
+      setScheduleState(null);
+      
+      // 清除全局计时器
+      clearAllTimers();
+      
+      // 更新全局用户活动状态
+      setUserActivityState('IDLE');
+      setUserActivityInfo({ status: null });
+    } catch (error) {
+      console.error('取消预约失败:', error);
+      // 即使取消辅助链失败，也要清除本地状态
+      setScheduleState(null);
+      clearAllTimers();
+      setUserActivityState('IDLE');
+      setUserActivityInfo({ status: null });
+    }
   };
 
   /**
@@ -560,7 +667,9 @@ export function useCTDPActions() {
     updateExceptionRules,
     
     // 辅助链管理
+    getContextAuxiliaryInfo,
     scheduleTask,
+    cancelScheduledTask,
     getUpcomingTasks,
     fulfillTask,
     failTask,

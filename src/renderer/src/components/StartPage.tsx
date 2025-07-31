@@ -11,6 +11,7 @@ import {
   hasActiveScheduleAtom,
   currentScheduleContextIdAtom
 } from '../features/ctdp/atoms';
+import { userActivityStateAtom } from '../store/atoms';
 import CreateContextPage from './CreateContextPage';
 import ContextManagementPage from './ContextManagementPage';
 import ScheduleModal from './ScheduleModal';
@@ -40,6 +41,7 @@ const StartPage: React.FC = () => {
   const error = useAtomValue(contextsErrorAtom);
   const hasActiveSchedule = useAtomValue(hasActiveScheduleAtom);
   const currentScheduleContextId = useAtomValue(currentScheduleContextIdAtom);
+  const userActivityState = useAtomValue(userActivityStateAtom);
 
   // 初始化数据加载
   useEffect(() => {
@@ -74,10 +76,15 @@ const StartPage: React.FC = () => {
   };
 
   // 处理预约确认
-  const handleScheduleConfirm = (delayMinutes: number, taskTitle: string) => {
+  const handleScheduleConfirm = async (delayMinutes: number, taskTitle: string) => {
     if (scheduleContext) {
-      startScheduleCountdown(scheduleContext.id, scheduleContext.name, taskTitle, delayMinutes);
-      setScheduleContext(null);
+      try {
+        await startScheduleCountdown(scheduleContext.id, scheduleContext.name, taskTitle, delayMinutes);
+        setScheduleContext(null);
+      } catch (error) {
+        console.error('创建预约失败:', error);
+        // 可以在这里添加错误提示
+      }
     }
   };
 
@@ -238,16 +245,24 @@ const StartPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <div className="flex flex-wrap gap-6 pb-8 justify-start">
           {contexts?.map((context) => {
-            const IconComponent = getIconComponent(context.icon);
+            const IconComponent = getIconComponent(context.icon || undefined);
             const activeChain = context.activeChain;
             const chainLength = activeChain?.counter || 0;
             const successRate = calculateSuccessRate(context);
             const lastActivity = formatLastActivity(context);
             
-            // 按钮状态逻辑
+            // 按钮状态逻辑 - 基于全局用户活动状态
             const isCurrentScheduleContext = currentScheduleContextId === context.id;
-            const shouldDisableSchedule = hasActiveSchedule && !isCurrentScheduleContext;
-            const shouldDisableStart = hasActiveSchedule && !isCurrentScheduleContext;
+            
+            // SCHEDULED 状态下：只有当前预约的情境可以立即开始，其他都禁用
+            // FOCUSING 状态下：所有按钮都禁用
+            // IDLE 状态下：所有按钮都可用
+            const isInScheduledState = userActivityState === 'SCHEDULED';
+            const isInFocusingState = userActivityState === 'FOCUSING';
+            const isInIdleState = userActivityState === 'IDLE';
+            
+            const shouldDisableSchedule = isInScheduledState || isInFocusingState;
+            const shouldDisableStart = (isInScheduledState && !isCurrentScheduleContext) || isInFocusingState;
             
             return (
               <Card

@@ -3,7 +3,8 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import { Bell, X, Clock } from 'lucide-react';
 import { useThemeVariables } from '../hooks/useTheme';
 import { scheduleModalAtom, scheduleStateAtom, contextsWithChainsAtom } from '../features/ctdp/atoms';
-import type { SacredContextRules } from '../../../types/ctdp';
+import { useCTDPActions } from '../features/ctdp/hooks';
+import type { SacredContextRules, ContextAuxiliaryInfo } from '../../../types/ctdp';
 
 interface ScheduleModalProps {
   contextId: string;
@@ -19,27 +20,48 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const themeVars = useThemeVariables();
   const [isOpen, setIsOpen] = useAtom(scheduleModalAtom);
   const contexts = useAtomValue(contextsWithChainsAtom);
+  const { getContextAuxiliaryInfo } = useCTDPActions();
   
-  // 从context规则中读取默认值
+  // 从context规则中读取默认值作为后备
   const currentContext = contexts?.find(ctx => ctx.id === contextId);
   const rules = currentContext?.rules as SacredContextRules;
   
-  const [delayMinutes, setDelayMinutes] = useState(() => {
-    // 优先使用context配置的presetTime，如果没有则默认5分钟
-    return rules?.presetTime || 5;
-  });
+  const [delayMinutes, setDelayMinutes] = useState(15);
   const [taskTitle, setTaskTitle] = useState('');
-  const [triggerAction, setTriggerAction] = useState(() => {
-    return rules?.triggerAction || '打响指';
-  });
+  const [triggerAction, setTriggerAction] = useState('打响指');
+  const [loading, setLoading] = useState(false);
 
-  // 当context变化时更新默认值
+  // 当modal打开时加载辅助链信息
   useEffect(() => {
-    if (rules) {
-      setDelayMinutes(rules.presetTime || 5);
-      setTriggerAction(rules.triggerAction || '打响指');
+    if (isOpen && contextId) {
+      setLoading(true);
+      getContextAuxiliaryInfo(contextId)
+        .then((info: ContextAuxiliaryInfo | null) => {
+          if (info) {
+            setDelayMinutes(info.delayMinutes);
+            setTaskTitle(info.description);
+            setTriggerAction(info.triggerAction);
+          } else {
+            // 使用context规则作为后备
+            setDelayMinutes(rules?.presetTime || 15);
+            setTaskTitle('');
+            setTriggerAction(rules?.triggerAction || '打响指');
+          }
+        })
+        .catch((error) => {
+          console.error('加载辅助链信息失败:', error);
+          // 使用context规则作为后备
+          setDelayMinutes(rules?.presetTime || 15);
+          setTaskTitle('');
+          setTriggerAction(rules?.triggerAction || '打响指');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
-  }, [rules]);
+    // 移除 rules 依赖，避免无限循环
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, contextId]);
 
   const handleCancel = () => {
     setIsOpen(false);
@@ -53,13 +75,17 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={handleCancel}
+    >
       <div 
         className="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl"
         style={{
           backgroundColor: themeVars.backgroundSecondary,
           color: themeVars.textPrimary
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* 标题区域 */}
         <div className="text-center mb-6">
@@ -95,11 +121,13 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
             type="text"
             value={taskTitle}
             onChange={(e) => setTaskTitle(e.target.value)}
+            disabled={loading}
             className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             style={{
               backgroundColor: themeVars.backgroundPrimary,
               borderColor: themeVars.borderPrimary,
-              color: themeVars.textPrimary
+              color: themeVars.textPrimary,
+              opacity: loading ? 0.6 : 1
             }}
             placeholder="输入任务标题（可选）"
           />
@@ -118,6 +146,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
               <button
                 key={minutes}
                 onClick={() => setDelayMinutes(minutes)}
+                disabled={loading}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   delayMinutes === minutes ? 'ring-2 ring-blue-500' : ''
                 }`}
@@ -129,7 +158,8 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
                     ? 'white' 
                     : themeVars.textPrimary,
                   borderColor: themeVars.borderPrimary,
-                  border: '1px solid'
+                  border: '1px solid',
+                  opacity: loading ? 0.6 : 1
                 }}
               >
                 {minutes}分钟
@@ -142,21 +172,27 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
         <div className="flex gap-3">
           <button
             onClick={handleCancel}
+            disabled={loading}
             className="flex-1 py-3 px-4 rounded-lg font-medium transition-colors"
             style={{
               backgroundColor: themeVars.backgroundPrimary,
               color: themeVars.textSecondary,
-              borderColor: themeVars.borderPrimary
+              borderColor: themeVars.borderPrimary,
+              opacity: loading ? 0.6 : 1
             }}
           >
             取消
           </button>
           <button
             onClick={handleConfirm}
+            disabled={loading}
             className="flex-1 py-3 px-4 rounded-lg font-medium text-white transition-colors"
-            style={{ backgroundColor: '#3B82F6' }}
+            style={{ 
+              backgroundColor: '#3B82F6',
+              opacity: loading ? 0.6 : 1
+            }}
           >
-            确认预约
+            {loading ? '加载中...' : '确认预约'}
           </button>
         </div>
 

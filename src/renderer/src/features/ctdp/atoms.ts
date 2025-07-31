@@ -61,6 +61,7 @@ export interface ScheduleState {
   taskTitle: string
   remainingTime: number // 剩余秒数
   totalTime: number // 总时间（秒）
+  auxiliaryId?: string // 辅助链ID（用于取消）
 }
 
 export const scheduleStateAtom = atom<ScheduleState | null>(null)

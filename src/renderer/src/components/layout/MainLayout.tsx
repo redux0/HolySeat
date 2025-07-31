@@ -33,8 +33,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     }
   };
 
-  const handleCountdownCancel = () => {
-    cancelSchedule();
+  const handleCountdownCancel = async () => {
+    try {
+      await cancelSchedule();
+    } catch (error) {
+      console.error('取消预约失败:', error);
+    }
   };
 
   return (

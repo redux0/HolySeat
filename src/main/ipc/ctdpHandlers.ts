@@ -106,6 +106,26 @@ export function registerCTDPHandlers() {
     }
   })
 
+  // 获取情境辅助链信息（用于预约对话框默认值）
+  ipcMain.handle('ctdp:getContextAuxiliaryInfo', async (_, contextId: string) => {
+    try {
+      return await chainService.getContextAuxiliaryInfo(contextId)
+    } catch (error) {
+      console.error('IPC Error - getContextAuxiliaryInfo:', error)
+      throw error
+    }
+  })
+
+  // 取消辅助链
+  ipcMain.handle('ctdp:cancelAuxiliaryTask', async (_, auxiliaryId: string, reason?: string) => {
+    try {
+      return await chainService.cancelAuxiliaryTask(auxiliaryId, reason)
+    } catch (error) {
+      console.error('IPC Error - cancelAuxiliaryTask:', error)
+      throw error
+    }
+  })
+
   // 获取待处理的辅助链
   ipcMain.handle('ctdp:getUpcomingAuxiliaryTasks', async () => {
     try {
@@ -285,6 +305,7 @@ export function registerCTDPHandlers() {
 export function unregisterCTDPHandlers() {
   const handlers = [
     'ctdp:getContextsWithActiveChains',
+    'ctdp:getContextWithAllChains',
     'ctdp:startOrContinueChain',
     'ctdp:incrementChain',
     'ctdp:breakChain',
@@ -292,6 +313,8 @@ export function unregisterCTDPHandlers() {
     'ctdp:updateExceptionRules',
     'ctdp:archiveChain',
     'ctdp:scheduleAuxiliaryTask',
+    'ctdp:getContextAuxiliaryInfo',
+    'ctdp:cancelAuxiliaryTask',
     'ctdp:getUpcomingAuxiliaryTasks',
     'ctdp:fulfillAuxiliaryTask',
     'ctdp:failAuxiliaryTask',

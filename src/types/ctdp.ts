@@ -117,6 +117,14 @@ export interface CreateAuxiliaryChainRequest {
   reminder?: boolean;
 }
 
+/** 情境辅助链信息（用于预约对话框默认值） */
+export interface ContextAuxiliaryInfo {
+  delayMinutes: number;
+  description: string;
+  reminder: boolean;
+  triggerAction: string;
+}
+
 // ============= 响应类型 =============
 
 /** 带有活跃链信息的神圣情境 */

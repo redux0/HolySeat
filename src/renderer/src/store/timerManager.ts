@@ -51,16 +51,27 @@ export const setScheduleTimerAtom = atom(
           timerId: currentInfo.timerId
         });
       } else {
-        // 预约时间到，清理计时器并切换状态
-        clearCurrentTimer(get, set);
-        set(userActivityStateAtom, 'IDLE');
-        set(userActivityInfoAtom, { status: null });
+        // 预约时间到，检查当前状态是否仍为SCHEDULED
+        const currentState = get(userActivityStateAtom);
         
-        console.log('⏰ 预约时间到达');
-        
-        // 触发完成回调
-        if (onComplete) {
-          onComplete();
+        if (currentState === 'SCHEDULED') {
+          // 清理计时器并保持状态为SCHEDULED，让回调处理状态转换
+          clearCurrentTimer(get, set);
+          
+          console.log('⏰ 预约时间到达，状态为SCHEDULED，触发完成回调');
+          
+          // 触发完成回调，由回调负责状态转换
+          if (onComplete) {
+            onComplete();
+          } else {
+            // 如果没有回调，则设置为IDLE
+            set(userActivityStateAtom, 'IDLE');
+            set(userActivityInfoAtom, { status: null });
+          }
+        } else {
+          // 状态已经不是SCHEDULED，只清理计时器
+          clearCurrentTimer(get, set);
+          console.log('⏰ 预约时间到达，但状态已变更为', currentState, '，不触发回调');
         }
       }
     }, 1000);
